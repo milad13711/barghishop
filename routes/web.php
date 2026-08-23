@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Account;
+use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\OtpLoginController;
 use App\Http\Controllers\Shop;
 use Illuminate\Support\Facades\Route;
@@ -85,4 +86,55 @@ Route::middleware('auth:customer')->prefix('account')->name('account.')->group(f
     Route::get('/loyalty', Account\LoyaltyController::class)->name('loyalty');
     Route::get('/wholesale', [Account\WholesaleController::class, 'form'])->name('wholesale');
     Route::post('/wholesale', [Account\WholesaleController::class, 'store'])->name('wholesale.store');
+});
+
+/*
+|--------------------------------------------------------------------------
+| پنل مدیریت
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('guest:web')->controller(Admin\LoginController::class)->group(function () {
+        Route::get('/login', 'form')->name('login');
+        Route::post('/login', 'login')->name('login.store');
+    });
+
+    Route::middleware('auth:web')->group(function () {
+        Route::post('/logout', [Admin\LoginController::class, 'logout'])->name('logout');
+        Route::get('/', Admin\DashboardController::class)->name('dashboard');
+
+        Route::get('/orders', [Admin\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [Admin\OrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/status', [Admin\OrderController::class, 'updateStatus'])->name('orders.status');
+
+        Route::get('/customers', [Admin\CustomerController::class, 'index'])->name('customers.index');
+        Route::patch('/customers/{customer}', [Admin\CustomerController::class, 'update'])->name('customers.update');
+
+        Route::get('/products', [Admin\ProductController::class, 'index'])->name('products.index');
+        Route::get('/products/create', [Admin\ProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [Admin\ProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{product}/edit', [Admin\ProductController::class, 'edit'])->name('products.edit');
+        Route::post('/products/{product}', [Admin\ProductController::class, 'update'])->name('products.update');
+        Route::delete('/products/{product}', [Admin\ProductController::class, 'destroy'])->name('products.destroy');
+        Route::delete('/products/{product}/media/{media}', [Admin\ProductController::class, 'deleteMedia'])->name('products.media.destroy');
+
+        Route::get('/categories', [Admin\TaxonomyController::class, 'categories'])->name('categories.index');
+        Route::post('/categories', [Admin\TaxonomyController::class, 'storeCategory'])->name('categories.store');
+        Route::patch('/categories/{category}', [Admin\TaxonomyController::class, 'updateCategory'])->name('categories.update');
+        Route::delete('/categories/{category}', [Admin\TaxonomyController::class, 'destroyCategory'])->name('categories.destroy');
+
+        Route::get('/brands', [Admin\TaxonomyController::class, 'brands'])->name('brands.index');
+        Route::post('/brands', [Admin\TaxonomyController::class, 'storeBrand'])->name('brands.store');
+        Route::patch('/brands/{brand}', [Admin\TaxonomyController::class, 'updateBrand'])->name('brands.update');
+
+        Route::get('/posts', [Admin\PostController::class, 'index'])->name('posts.index');
+        Route::get('/posts/create', [Admin\PostController::class, 'create'])->name('posts.create');
+        Route::post('/posts', [Admin\PostController::class, 'store'])->name('posts.store');
+        Route::get('/posts/{post}/edit', [Admin\PostController::class, 'edit'])->name('posts.edit');
+        Route::post('/posts/{post}', [Admin\PostController::class, 'update'])->name('posts.update');
+        Route::delete('/posts/{post}', [Admin\PostController::class, 'destroy'])->name('posts.destroy');
+
+        Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
+    });
 });
