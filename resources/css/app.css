@@ -1,11 +1,163 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/vazirmatn/index.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* ---------------------------------------------------------------------------
+   زبان طراحی برقی‌شاپ
+   سرمه‌ای عمیق = اعتماد و تخصص | آبی برقی = کنش | طلایی = ارزش و گارانتی
+   --------------------------------------------------------------------------- */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Vazirmatn Variable', ui-sans-serif, system-ui, sans-serif;
+
+    --color-navy-50:  #f2f5fa;
+    --color-navy-100: #e2e9f4;
+    --color-navy-200: #c5d3e8;
+    --color-navy-300: #94aed3;
+    --color-navy-400: #5c81b8;
+    --color-navy-500: #3a5f9c;
+    --color-navy-600: #2a4a7f;
+    --color-navy-700: #1f3a66;
+    --color-navy-800: #16294a;
+    --color-navy-900: #0b1f3a;
+    --color-navy-950: #06132a;
+
+    --color-electric-50:  #eef6ff;
+    --color-electric-100: #d9ecff;
+    --color-electric-200: #bcdeff;
+    --color-electric-300: #8ec9ff;
+    --color-electric-400: #59aaff;
+    --color-electric-500: #0a84ff;
+    --color-electric-600: #0068d6;
+    --color-electric-700: #0053ad;
+    --color-electric-800: #06478c;
+    --color-electric-900: #0a3d73;
+
+    --color-gold-50:  #fbf8ec;
+    --color-gold-100: #f5edcd;
+    --color-gold-200: #ebd99e;
+    --color-gold-300: #dfc066;
+    --color-gold-400: #d3a93f;
+    --color-gold-500: #c9a227;
+    --color-gold-600: #a87c1d;
+    --color-gold-700: #865c1b;
+    --color-gold-800: #714a1e;
+    --color-gold-900: #613e1f;
+
+    --radius-card: 1rem;
+
+    --shadow-soft: 0 1px 2px rgb(11 31 58 / 0.04), 0 8px 24px -12px rgb(11 31 58 / 0.12);
+    --shadow-lift: 0 2px 4px rgb(11 31 58 / 0.06), 0 16px 40px -16px rgb(11 31 58 / 0.22);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-slate-50 text-navy-900 antialiased;
+        font-feature-settings: 'ss01';
+    }
+
+    /* اعداد فارسی در متن‌های نمایشی */
+    .nums-fa {
+        font-variant-numeric: normal;
+    }
+
+    ::selection {
+        @apply bg-electric-500/20;
+    }
+
+    /* اسکرول‌بار نازک و بی‌سروصدا */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-navy-200) transparent;
+    }
+}
+
+@layer components {
+    .container-app {
+        @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+    }
+
+    .card {
+        @apply rounded-2xl bg-white shadow-[var(--shadow-soft)] ring-1 ring-navy-100/70;
+    }
+
+    .card-hover {
+        @apply transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lift)];
+    }
+
+    .btn,
+    .btn-primary,
+    .btn-navy,
+    .btn-gold,
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold
+               transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+               disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .btn-primary {
+        @apply bg-electric-500 text-white shadow-[0_8px_20px_-8px_var(--color-electric-500)]
+               hover:bg-electric-600 focus-visible:ring-electric-500;
+    }
+
+    .btn-navy {
+        @apply bg-navy-900 text-white hover:bg-navy-800 focus-visible:ring-navy-900;
+    }
+
+    .btn-gold {
+        @apply bg-gold-500 text-navy-950 hover:bg-gold-400 focus-visible:ring-gold-500;
+    }
+
+    .btn-ghost {
+        @apply bg-white text-navy-800 ring-1 ring-navy-200 hover:bg-navy-50 focus-visible:ring-navy-400;
+    }
+
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold;
+    }
+
+    .input {
+        @apply w-full rounded-xl border-0 bg-white px-4 py-3 text-sm text-navy-900 ring-1 ring-navy-200
+               placeholder:text-navy-300 focus:ring-2 focus:ring-electric-500;
+    }
+
+    .prose-fa {
+        @apply leading-8 text-navy-700;
+    }
+
+    .prose-fa h2 {
+        @apply mt-8 mb-3 text-xl font-bold text-navy-900;
+    }
+
+    .prose-fa h3 {
+        @apply mt-6 mb-2 text-lg font-bold text-navy-900;
+    }
+
+    .prose-fa p {
+        @apply mb-4;
+    }
+
+    .prose-fa ul {
+        @apply mb-4 space-y-2 pr-5;
+    }
+
+    .prose-fa li {
+        @apply relative;
+    }
+
+    .prose-fa ul li::before {
+        content: '';
+        @apply absolute -right-4 top-3 size-1.5 rounded-full bg-electric-500;
+    }
+
+    .prose-fa a {
+        @apply font-semibold text-electric-600 underline-offset-4 hover:underline;
+    }
 }
