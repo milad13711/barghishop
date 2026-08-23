@@ -60,7 +60,7 @@
                 <h2 class="text-sm font-bold text-white">همکار یا پیمانکار هستید؟</h2>
                 <p class="mt-1.5 text-xs leading-6 text-navy-300">با ثبت درخواست، قیمت‌های عمده برای حساب شما فعال می‌شود.</p>
             </div>
-            <a href="{{ route('wholesale') }}" class="btn-gold !py-2.5 !text-xs">ثبت درخواست همکاری</a>
+            <a href="{{ route('account.wholesale') }}" class="btn-gold !py-2.5 !text-xs">ثبت درخواست همکاری</a>
         </div>
     @elseif($customer->wholesale_status === \App\Models\Customer::WHOLESALE_PENDING)
         <div class="card bg-gold-50 p-5 text-sm text-gold-800">

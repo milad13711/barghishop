@@ -58,7 +58,7 @@
 
                 <div class="mt-6">
                     @auth('customer')
-                        <a href="{{ route('account.dashboard') }}" class="btn-primary">تکمیل درخواست در حساب کاربری</a>
+                        <a href="{{ route('account.wholesale') }}" class="btn-primary">تکمیل درخواست همکاری</a>
                     @else
                         <a href="{{ route('auth.login') }}" class="btn-primary">ورود و ثبت درخواست همکاری</a>
                     @endauth

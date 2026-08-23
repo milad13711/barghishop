@@ -83,4 +83,6 @@ Route::middleware('auth:customer')->prefix('account')->name('account.')->group(f
     Route::get('/orders', [Account\OrderController::class, 'index'])->name('orders');
     Route::get('/orders/{order}', [Account\OrderController::class, 'show'])->name('orders.show');
     Route::get('/loyalty', Account\LoyaltyController::class)->name('loyalty');
+    Route::get('/wholesale', [Account\WholesaleController::class, 'form'])->name('wholesale');
+    Route::post('/wholesale', [Account\WholesaleController::class, 'store'])->name('wholesale.store');
 });
