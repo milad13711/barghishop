@@ -42,6 +42,23 @@ Route::controller(Shop\CartController::class)->prefix('cart')->name('cart.')->gr
 
 /*
 |--------------------------------------------------------------------------
+| تسویه حساب و پرداخت
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:customer')->controller(Shop\CheckoutController::class)
+    ->prefix('checkout')->name('checkout.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/address', 'storeAddress')->name('address');
+        Route::post('/place', 'place')->name('place');
+        Route::get('/result/{order}', 'result')->name('result');
+    });
+
+// بازگشت از درگاه — بدون میدل‌ور auth چون کاربر از سایت بانک برمی‌گردد
+Route::get('/payment/callback/{gateway}', [Shop\PaymentController::class, 'callback'])
+    ->name('payment.callback');
+
+/*
+|--------------------------------------------------------------------------
 | ورود مشتری (موبایل + کد یکبار مصرف)
 |--------------------------------------------------------------------------
 */

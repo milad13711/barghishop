@@ -39,7 +39,7 @@ class OrderStatusService
             }
 
             if (! $order->canTransitionTo($to)) {
-                throw new RuntimeException("تغییر وضعیت از «$from» به «$to» مجاز نیست.");
+                throw new RuntimeException("تغییر وضعیت از «{$from}» به «{$to}» مجاز نیست.");
             }
 
             $order->fill($extra);

@@ -127,7 +127,7 @@ class CatalogController extends Controller
     protected function title(?Category $category, ?Brand $brand, ?string $term): string
     {
         if ($term) {
-            return "جستجوی «$term» | ".config('shop.name');
+            return "جستجوی «{$term}» | ".config('shop.name');
         }
 
         if ($category) {

@@ -114,8 +114,12 @@
 
                     <p class="text-[11px] leading-6 text-navy-400">هزینه ارسال در مرحله بعد و بر اساس استان و وزن سفارش محاسبه می‌شود.</p>
 
-                    <button type="button" class="btn-primary w-full" disabled>ادامه و تسویه حساب</button>
-                    <p class="text-center text-[11px] text-navy-400">مرحله تسویه در فاز بعدی فعال می‌شود.</p>
+                    @auth('customer')
+                        <a href="{{ route('checkout.index') }}" class="btn-primary w-full">ادامه و تسویه حساب</a>
+                    @else
+                        <a href="{{ route('auth.login') }}" class="btn-primary w-full">ورود و ادامه خرید</a>
+                        <p class="text-center text-[11px] text-navy-400">برای تکمیل سفارش باید وارد حساب شوید.</p>
+                    @endauth
                 </div>
             </aside>
         </div>
