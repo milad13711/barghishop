@@ -1,0 +1,104 @@
+name: استقرار روی سرور
+
+# تا وقتی متغیر DEPLOY_ENABLED روی 'true' تنظیم نشده باشد، این ورک‌فلو کاری نمی‌کند.
+# مسیر فعال‌سازی پس از تهیه سرور:
+#   Settings ← Secrets and variables ← Actions
+#     Variables: DEPLOY_ENABLED = true
+#     Secrets:   SSH_HOST, SSH_USER, SSH_KEY, (اختیاری) SSH_PORT, DEPLOY_PATH
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: git pull + build روی سرور
+    runs-on: ubuntu-latest
+    if: vars.DEPLOY_ENABLED == 'true'
+
+    steps:
+      - name: بررسی تنظیم بودن اسرارها
+        run: |
+          for name in SSH_HOST SSH_USER SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::سکرت $name تنظیم نشده است."
+              exit 1
+            fi
+          done
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: آماده‌سازی کلید SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+
+      - name: اجرای استقرار
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" \
+              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              "DEPLOY_PATH='${DEPLOY_PATH:-/var/www/barghishop}' bash -s" <<'SCRIPT'
+          set -euo pipefail
+
+          cd "$DEPLOY_PATH"
+          echo "▶ استقرار در $DEPLOY_PATH"
+
+          # نسخه فعلی را نگه می‌داریم تا در صورت خطا برگردیم
+          PREVIOUS=$(git rev-parse HEAD)
+          echo "نسخه فعلی: $PREVIOUS"
+
+          php artisan down --retry=15 || true
+
+          rollback() {
+            echo "::error::استقرار شکست خورد — بازگشت به $PREVIOUS"
+            git reset --hard "$PREVIOUS"
+            composer install --no-dev --optimize-autoloader --no-interaction || true
+            php artisan up || true
+            exit 1
+          }
+          trap rollback ERR
+
+          git fetch --prune origin main
+          git reset --hard origin/main
+
+          composer install --no-dev --optimize-autoloader --no-interaction
+          npm ci --omit=dev
+          npm run build
+
+          php artisan migrate --force
+
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan storage:link || true
+
+          trap - ERR
+          php artisan up
+
+          echo "✔ استقرار انجام شد: $(git rev-parse --short HEAD)"
+          SCRIPT
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
+      - name: بررسی سلامت سایت
+        if: success()
+        run: |
+          URL="${HEALTH_URL:-https://barghishop.com}"
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || echo "000")
+          echo "پاسخ $URL → $CODE"
+          if [ "$CODE" != "200" ]; then
+            echo "::warning::سایت پاسخ ۲۰۰ نداد (کد $CODE). لطفاً دستی بررسی کنید."
+          fi
+        env:
+          HEALTH_URL: ${{ secrets.HEALTH_URL }}

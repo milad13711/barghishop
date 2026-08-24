@@ -1,0 +1,45 @@
+name: تست‌ها
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, gd, zip, intl, bcmath, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: کش وابستگی‌های Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: نصب وابستگی‌ها
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: آماده‌سازی محیط
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: نصب و بیلد فرانت‌اند
+        run: |
+          npm ci
+          npm run build
+
+      - name: اجرای تست‌ها
+        run: php artisan test

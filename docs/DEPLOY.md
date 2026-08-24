@@ -130,7 +130,85 @@ sudo certbot --nginx -d barghishop.com -d www.barghishop.com
 * * * * * cd /var/www/barghishop && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-## استقرار نسخه‌های بعدی
+## استقرار خودکار با GitHub Actions
+
+دو ورک‌فلو در `.github/workflows/` هست:
+
+| فایل | کِی اجرا می‌شود | کار |
+|---|---|---|
+| `tests.yml` | هر push و PR روی `main` | نصب PHP، بیلد فرانت و اجرای کل تست‌ها |
+| `deploy.yml` | push روی `main` یا اجرای دستی | SSH به سرور، `git pull`، build، migrate |
+
+`tests.yml` از همین حالا فعال است. `deploy.yml` تا وقتی متغیر `DEPLOY_ENABLED`
+روی `true` تنظیم نشده باشد **اجرا نمی‌شود** — پس تا پیش از تهیه سرور، هر push
+با خطای قرمز مواجه نمی‌شود.
+
+### فعال‌سازی پس از تهیه سرور
+
+**۱. روی سرور یک کلید Deploy بساز و به گیت‌هاب اضافه کن**
+
+```bash
+ssh-keygen -t ed25519 -C "barghishop-server" -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub
+```
+
+خروجی را در GitHub → repo → Settings → Deploy keys → Add deploy key بگذار
+(دسترسی نوشتن لازم نیست). سپس ریپو را روی سرور کلون کن:
+
+```bash
+sudo -u www-data git clone git@github.com:milad13711/barghishop.git /var/www/barghishop
+```
+
+**۲. یک کلید SSH برای اتصال Actions به سرور بساز**
+
+روی کامپیوتر خودت:
+
+```bash
+ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/barghishop_ci -N ""
+ssh-copy-id -i ~/.ssh/barghishop_ci.pub deploy@«آی‌پی سرور»
+cat ~/.ssh/barghishop_ci      # این کلید خصوصی را در سکرت SSH_KEY بگذار
+```
+
+**۳. تنظیم در GitHub → Settings → Secrets and variables → Actions**
+
+Variables:
+
+| نام | مقدار |
+|---|---|
+| `DEPLOY_ENABLED` | `true` |
+
+Secrets:
+
+| نام | مقدار |
+|---|---|
+| `SSH_HOST` | آی‌پی یا دامنه سرور |
+| `SSH_USER` | کاربر استقرار (مثلاً `deploy`) |
+| `SSH_KEY` | محتوای کامل کلید **خصوصی** `barghishop_ci` |
+| `SSH_PORT` | اختیاری، پیش‌فرض `22` |
+| `DEPLOY_PATH` | اختیاری، پیش‌فرض `/var/www/barghishop` |
+| `HEALTH_URL` | اختیاری، پیش‌فرض `https://barghishop.com` |
+
+**۴. اجازه اجرای دستورهای لازم به کاربر استقرار**
+
+کاربر `deploy` باید بتواند بدون رمز `php artisan` و `composer` را در مسیر پروژه اجرا کند
+و مالک فایل‌ها باشد:
+
+```bash
+sudo usermod -aG www-data deploy
+sudo chown -R deploy:www-data /var/www/barghishop
+sudo chmod -R g+w /var/www/barghishop/storage /var/www/barghishop/bootstrap/cache
+```
+
+### رفتار در صورت خطا
+
+اسکریپت استقرار پیش از هر تغییر، کامیت فعلی را ذخیره می‌کند. اگر هر مرحله‌ای
+شکست بخورد (بیلد، مهاجرت و…) خودکار به همان کامیت برمی‌گردد و سایت را از حالت
+تعمیر خارج می‌کند. یعنی یک push خراب، سایت را پایین نگه نمی‌دارد.
+
+> **هشدار:** rollback فقط **کد** را برمی‌گرداند، نه دیتابیس را. اگر مهاجرتی
+> نیمه‌کاره اجرا شده باشد باید دستی بررسی شود. برای همین بکاپ روزانه دیتابیس الزامی است.
+
+## استقرار دستی نسخه‌های بعدی
 
 ```bash
 cd /var/www/barghishop
