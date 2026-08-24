@@ -21,6 +21,7 @@
             <button type="submit" class="btn-primary !py-2.5 !text-xs">اعمال</button>
         </form>
 
+        <a href="{{ route('admin.products.import') }}" class="btn-ghost !py-2.5 !text-xs">ایمپورت CSV</a>
         <a href="{{ route('admin.products.create') }}" class="btn-navy !py-2.5 !text-xs">افزودن محصول</a>
     </div>
 

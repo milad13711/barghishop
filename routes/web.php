@@ -37,6 +37,8 @@ Route::get('/sitemap.xml', Shop\SitemapController::class)->name('sitemap');
 Route::controller(Shop\CartController::class)->prefix('cart')->name('cart.')->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/add', 'add')->name('add');
+    Route::post('/coupon', 'applyCoupon')->name('coupon.apply');
+    Route::delete('/coupon', 'removeCoupon')->name('coupon.remove');
     Route::patch('/{item}', 'update')->name('update');
     Route::delete('/{item}', 'remove')->name('remove');
 });
@@ -112,6 +114,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/products', [Admin\ProductController::class, 'index'])->name('products.index');
         Route::get('/products/create', [Admin\ProductController::class, 'create'])->name('products.create');
+        Route::get('/products/import', [Admin\ImportController::class, 'form'])->name('products.import');
+        Route::post('/products/import', [Admin\ImportController::class, 'store'])->name('products.import.store');
+        Route::get('/products/import/template', [Admin\ImportController::class, 'template'])->name('products.import.template');
         Route::post('/products', [Admin\ProductController::class, 'store'])->name('products.store');
         Route::get('/products/{product}/edit', [Admin\ProductController::class, 'edit'])->name('products.edit');
         Route::post('/products/{product}', [Admin\ProductController::class, 'update'])->name('products.update');
@@ -133,6 +138,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/posts/{post}/edit', [Admin\PostController::class, 'edit'])->name('posts.edit');
         Route::post('/posts/{post}', [Admin\PostController::class, 'update'])->name('posts.update');
         Route::delete('/posts/{post}', [Admin\PostController::class, 'destroy'])->name('posts.destroy');
+
+        Route::get('/coupons', [Admin\CouponController::class, 'index'])->name('coupons.index');
+        Route::post('/coupons', [Admin\CouponController::class, 'store'])->name('coupons.store');
+        Route::patch('/coupons/{coupon}', [Admin\CouponController::class, 'update'])->name('coupons.update');
+        Route::delete('/coupons/{coupon}', [Admin\CouponController::class, 'destroy'])->name('coupons.destroy');
 
         Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');

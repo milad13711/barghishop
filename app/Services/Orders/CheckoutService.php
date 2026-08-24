@@ -108,6 +108,16 @@ class CheckoutService
                 ]);
             }
 
+            if ($coupon = $summary->cart?->coupon) {
+                $coupon->increment('used_count');
+
+                $coupon->usages()->create([
+                    'customer_id'     => $customer->id,
+                    'order_id'        => $order->id,
+                    'discount_amount' => $summary->couponDiscount(),
+                ]);
+            }
+
             $order->statusLogs()->create([
                 'to_status'  => Order::PENDING_PAYMENT,
                 'actor_type' => 'customer',

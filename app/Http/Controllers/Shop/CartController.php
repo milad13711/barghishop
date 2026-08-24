@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\Cart\CartService;
+use App\Services\Cart\CouponService;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -58,6 +59,35 @@ class CartController extends Controller
         $this->cart->remove($item);
 
         return back()->with('success', 'محصول از سبد حذف شد.');
+    }
+
+    public function applyCoupon(Request $request, CouponService $coupons)
+    {
+        $request->validate(['code' => ['required', 'string', 'max:60']]);
+
+        $cart = $this->cart->current(createIfMissing: true);
+
+        try {
+            $coupons->apply(
+                $cart,
+                $request->input('code'),
+                auth('customer')->user(),
+                $this->cart->summary()->subtotal(),
+            );
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['coupon' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'کد تخفیف اعمال شد.');
+    }
+
+    public function removeCoupon(CouponService $coupons)
+    {
+        if ($cart = $this->cart->current()) {
+            $coupons->remove($cart);
+        }
+
+        return back()->with('success', 'کد تخفیف حذف شد.');
     }
 
     protected function authorizeItem(CartItem $item): void

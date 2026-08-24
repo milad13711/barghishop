@@ -105,6 +105,34 @@
                         @endif
                     </dl>
 
+                    {{-- کد تخفیف --}}
+                    <div class="border-t border-navy-100 pt-4">
+                        @if($coupon = $summary->cart?->coupon)
+                            <div class="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2.5">
+                                <div class="text-xs">
+                                    <div class="font-bold text-emerald-800" dir="ltr">{{ $coupon->code }}</div>
+                                    <div class="mt-0.5 text-emerald-600 nums-fa">
+                                        {{ \App\Support\Money::format($summary->couponDiscount()) }} تخفیف
+                                    </div>
+                                </div>
+                                <form action="{{ route('cart.coupon.remove') }}" method="post">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-xs font-semibold text-rose-600">حذف</button>
+                                </form>
+                            </div>
+                        @else
+                            <form action="{{ route('cart.coupon.apply') }}" method="post" class="flex gap-2">
+                                @csrf
+                                <input type="text" name="code" dir="ltr" class="input !py-2.5 !text-xs" placeholder="کد تخفیف">
+                                <button type="submit" class="btn-ghost shrink-0 !px-4 !py-2.5 !text-xs">اعمال</button>
+                            </form>
+                        @endif
+
+                        @error('coupon')
+                            <p class="mt-2 text-xs text-rose-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="flex items-center justify-between border-t border-navy-100 pt-4">
                         <span class="text-sm font-bold text-navy-900">مبلغ قابل پرداخت</span>
                         <span class="text-lg font-extrabold text-navy-900 nums-fa">
