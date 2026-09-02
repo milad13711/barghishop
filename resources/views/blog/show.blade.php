@@ -24,7 +24,7 @@
                     {{ $post->title }}
                 </h1>
                 <div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-navy-400 nums-fa">
-                    <span>{{ \App\Support\Digits::toPersian($post->published_at?->format('Y/m/d') ?? '') }}</span>
+                    <span>@jdlong($post->published_at)</span>
                     <span>·</span>
                     <span>{{ \App\Support\Digits::toPersian((string) $post->reading_minutes) }} دقیقه مطالعه</span>
                     <span>·</span>

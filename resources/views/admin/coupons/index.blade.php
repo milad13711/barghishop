@@ -39,7 +39,7 @@
                             @if($coupon->usage_limit)/ {{ \App\Support\Digits::toPersian((string) $coupon->usage_limit) }}@endif
                         </td>
                         <td class="p-4 text-xs text-navy-500 nums-fa">
-                            {{ $coupon->expires_at ? \App\Support\Digits::toPersian($coupon->expires_at->format('Y/m/d')) : 'بدون انقضا' }}
+                            {{ $coupon->expires_at ? \App\Support\Jalali::format($coupon->expires_at) : 'بدون انقضا' }}
                         </td>
                         <td class="p-4 text-left">
                             <form action="{{ route('admin.coupons.destroy', $coupon) }}" method="post" onsubmit="return confirm('حذف شود؟')">
@@ -100,7 +100,9 @@
             </div>
             <div>
                 <label class="mb-2 block text-xs font-semibold text-navy-700">تاریخ انقضا</label>
-                <input type="date" name="expires_at" dir="ltr" class="input !py-2.5">
+                <input type="text" name="expires_at" dir="ltr" inputmode="numeric"
+                       placeholder="۱۴۰۵/۱۲/۲۹" class="input !py-2.5">
+                <p class="mt-1.5 text-[11px] text-navy-400">تاریخ شمسی، به شکل ۱۴۰۵/۱۲/۲۹. خالی یعنی بدون انقضا.</p>
             </div>
             <div>
                 <label class="mb-2 block text-xs font-semibold text-navy-700">محدود به سطوح (خالی = همه)</label>

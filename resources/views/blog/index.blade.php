@@ -57,7 +57,7 @@
                                 <div class="mt-auto flex items-center gap-3 pt-4 text-[11px] text-navy-400 nums-fa">
                                     <span>{{ \App\Support\Digits::toPersian((string) $post->reading_minutes) }} دقیقه مطالعه</span>
                                     <span>·</span>
-                                    <span>{{ \App\Support\Digits::toPersian($post->published_at?->format('Y/m/d') ?? '') }}</span>
+                                    <span>@jd($post->published_at)</span>
                                 </div>
                             </div>
                         </article>

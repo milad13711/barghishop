@@ -52,7 +52,7 @@
                         <div>
                             <div class="text-sm text-navy-800">{{ $entry->reason }}</div>
                             <div class="mt-0.5 text-[11px] text-navy-400 nums-fa">
-                                {{ \App\Support\Digits::toPersian($entry->created_at->format('Y/m/d')) }}
+                                @jd($entry->created_at)
                             </div>
                         </div>
                         <span class="text-sm font-bold nums-fa {{ $entry->points > 0 ? 'text-emerald-600' : 'text-rose-600' }}">

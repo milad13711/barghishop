@@ -32,7 +32,7 @@
                     @php [$label, $classes] = $labels[$order->status] ?? [$order->status, 'bg-slate-100 text-slate-600']; @endphp
                     <tr>
                         <td class="py-3 font-medium text-navy-900 nums-fa" dir="ltr">{{ $order->code }}</td>
-                        <td class="py-3 text-navy-500 nums-fa">{{ \App\Support\Digits::toPersian($order->created_at->format('Y/m/d')) }}</td>
+                        <td class="py-3 text-navy-500 nums-fa">@jd($order->created_at)</td>
                         <td class="py-3 font-medium text-navy-900 nums-fa">{{ \App\Support\Money::format($order->grand_total) }}</td>
                         <td class="py-3"><span class="badge {{ $classes }}">{{ $label }}</span></td>
                         <td class="py-3 text-left">

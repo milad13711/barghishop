@@ -44,7 +44,7 @@
                             <div class="text-navy-800">{{ $order->customer?->name ?: '—' }}</div>
                             <div class="mt-0.5 text-xs text-navy-400 nums-fa" dir="ltr">{{ $order->customer?->mobile }}</div>
                         </td>
-                        <td class="p-4 text-navy-500 nums-fa">{{ \App\Support\Digits::toPersian($order->created_at->format('Y/m/d H:i')) }}</td>
+                        <td class="p-4 text-navy-500 nums-fa">@jdt($order->created_at)</td>
                         <td class="p-4 font-bold text-navy-900 nums-fa">{{ \App\Support\Money::format($order->grand_total, false) }}</td>
                         <td class="p-4"><x-admin.status-badge :status="$order->status" /></td>
                         <td class="p-4 text-left">

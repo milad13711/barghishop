@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use App\Models\PriceTier;
+use App\Support\Jalali;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -51,7 +52,7 @@ class CouponController extends Controller
             'min_total'    => ['nullable', 'numeric', 'min:0'],
             'usage_limit'  => ['nullable', 'integer', 'min:1'],
             'usage_limit_per_customer' => ['nullable', 'integer', 'min:1'],
-            'expires_at'   => ['nullable', 'date'],
+            'expires_at'   => ['nullable', 'string', 'max:12'],
             'tier_scope'   => ['nullable', 'array'],
         ]);
 
@@ -63,6 +64,21 @@ class CouponController extends Controller
         $data['value'] = $data['type'] === Coupon::FIXED
             ? Money::fromToman((int) ($data['value'] ?? 0))
             : (int) ($data['value'] ?? 0);
+
+        // تاریخ شمسی واردشده را به میلادی تبدیل می‌کنیم (ذخیره‌سازی همیشه میلادی است)
+        if (filled($data['expires_at'] ?? null)) {
+            $parsed = Jalali::parse($data['expires_at']);
+
+            if (! $parsed) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'expires_at' => 'تاریخ انقضا باید به شکل ۱۴۰۵/۱۲/۲۹ باشد.',
+                ]);
+            }
+
+            $data['expires_at'] = $parsed->endOfDay();
+        } else {
+            $data['expires_at'] = null;
+        }
 
         $data['tier_scope'] = ! empty($data['tier_scope'])
             ? array_map('intval', $data['tier_scope'])

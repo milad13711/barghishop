@@ -29,6 +29,31 @@ class LocalizationTest extends TestCase
         }
     }
 
+    public function test_no_gregorian_dates_are_rendered_to_users(): void
+    {
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+
+        $admin = \App\Models\User::firstOrFail();
+
+        $urls = [
+            '/', route('blog.index'), route('shop.index'),
+            route('admin.dashboard'), route('admin.orders.index'), route('admin.coupons.index'),
+        ];
+
+        foreach ($urls as $url) {
+            $html = $this->actingAs($admin, 'web')->get($url)->assertOk()->getContent();
+
+            // اسکیمای JSON-LD طبق استاندارد باید ISO میلادی بماند و کاربر نمی‌بیندش
+            $visible = preg_replace('#<script type="application/ld\+json">.*?</script>#s', '', $html);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '#\b20\d{2}[-/]\d{2}[-/]\d{2}\b#',
+                $visible,
+                "تاریخ میلادی در $url نمایش داده شده است.",
+            );
+        }
+    }
+
     public function test_validation_messages_are_translated(): void
     {
         $this->post(route('pages.contact.store'), ['name' => '', 'body' => ''])

@@ -93,10 +93,12 @@ class Order extends Model
         return in_array($status, self::TRANSITIONS[$this->status] ?? [], true);
     }
 
-    /** شماره سفارش خوانا: BS-140501-0042 */
+    /** شماره سفارش خوانا بر پایه تاریخ شمسی: BS-050611-0042 */
     public static function generateCode(): string
     {
-        return 'BS-'.now()->format('ymd').'-'.str_pad((string) (static::max('id') + 1), 4, '0', STR_PAD_LEFT);
+        $date = \App\Support\Jalali::format(now(), 'ymd', persianDigits: false);
+
+        return 'BS-'.$date.'-'.str_pad((string) (static::max('id') + 1), 4, '0', STR_PAD_LEFT);
     }
 
     public function getRouteKeyName(): string

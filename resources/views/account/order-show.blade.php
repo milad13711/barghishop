@@ -7,7 +7,7 @@
             <div>
                 <h1 class="text-sm font-bold text-navy-900">سفارش <span dir="ltr" class="nums-fa">{{ $order->code }}</span></h1>
                 <p class="mt-1 text-xs text-navy-400 nums-fa">
-                    ثبت‌شده در {{ \App\Support\Digits::toPersian($order->created_at->format('Y/m/d H:i')) }}
+                    ثبت‌شده در @jdt($order->created_at)
                 </p>
             </div>
             @if($order->tracking_code)
@@ -26,7 +26,7 @@
                         <span class="absolute -right-[26px] top-1.5 size-3 rounded-full bg-electric-500 ring-4 ring-white"></span>
                         <div class="text-sm font-medium text-navy-900">{{ $log->to_status }}</div>
                         <div class="mt-0.5 text-[11px] text-navy-400 nums-fa">
-                            {{ \App\Support\Digits::toPersian($log->created_at->format('Y/m/d H:i')) }}
+                            @jdt($log->created_at)
                         </div>
                         @if($log->note)<p class="mt-1 text-xs text-navy-500">{{ $log->note }}</p>@endif
                     </li>

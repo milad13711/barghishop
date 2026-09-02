@@ -86,7 +86,7 @@
 
     <div class="border-t border-white/10">
         <div class="container-app flex flex-col items-center justify-between gap-2 py-5 text-xs text-navy-400 sm:flex-row">
-            <span>© {{ \App\Support\Digits::toPersian((string) \Carbon\Carbon::now()->year) }} برقی‌شاپ — تمام حقوق محفوظ است.</span>
+            <span>© {{ \App\Support\Digits::toPersian((string) \App\Support\Jalali::currentYear()) }} برقی‌شاپ — تمام حقوق محفوظ است.</span>
             <span>قیمت‌ها به‌روزرسانی روزانه می‌شوند.</span>
         </div>
     </div>

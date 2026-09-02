@@ -56,7 +56,7 @@
                         <div class="flex items-center gap-2">
                             <x-admin.status-badge :status="$log->to_status" />
                             <span class="text-[11px] text-navy-400 nums-fa">
-                                {{ \App\Support\Digits::toPersian($log->created_at->format('Y/m/d H:i')) }} — {{ $log->actor_type }}
+                                @jdt($log->created_at) — {{ ['admin' => 'مدیر', 'customer' => 'مشتری', 'system' => 'سیستم'][$log->actor_type] ?? $log->actor_type }}
                             </span>
                         </div>
                         @if($log->note)<p class="mt-1.5 text-xs text-navy-500">{{ $log->note }}</p>@endif
