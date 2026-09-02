@@ -18,7 +18,7 @@ final class Schema
             '@type'    => 'Organization',
             'name'     => config('shop.name'),
             'url'      => url('/'),
-            'logo'     => url('/images/logo.png'),
+            'logo'     => url('/images/logo.svg'),
             'contactPoint' => [
                 '@type'       => 'ContactPoint',
                 'telephone'   => \App\Models\Setting::get('support_phone'),

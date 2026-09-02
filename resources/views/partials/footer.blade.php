@@ -31,9 +31,7 @@
     <div class="container-app grid gap-10 py-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
             <div class="flex items-center gap-2.5">
-                <span class="grid size-10 place-items-center rounded-xl bg-white/10 text-gold-400">
-                    <svg class="size-6" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11l-.5 8.5L19.5 10H13l.5-8Z"/></svg>
-                </span>
+                <x-logo variant="light" class="h-10" />
                 <span class="text-lg font-extrabold text-white">برقی‌شاپ</span>
             </div>
             <p class="mt-4 text-sm leading-7 text-navy-300">

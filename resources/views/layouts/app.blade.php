@@ -18,7 +18,11 @@
         <meta property="og:image" content="{{ $seo['image'] }}">
     @endif
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="theme-color" content="#0b1f3a">
+    <meta name="theme-color" content="#1e3a66">
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    <meta property="og:image" content="{{ url('/images/logo.svg') }}">
 
     <link rel="alternate" hreflang="fa-IR" href="{{ url()->current() }}">
 

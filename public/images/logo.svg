@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 104" role="img" aria-label="برقی‌شاپ">
+  <title>برقی‌شاپ</title>
+
+  <!-- خطوط سرعت -->
+  <g fill="#ffc615">
+    <path d="M6 44 42 40v8z"/>
+    <path d="M0 58 40 54v8z"/>
+    <path d="M12 72 42 68.5v7z"/>
+  </g>
+
+  <!-- دسته -->
+  <path d="M30 22h16l9 17" fill="none" stroke="#1e3a66" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M30 22h9" fill="none" stroke="#ffc615" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- بدنه سبد -->
+  <path d="M48 30h58a8 8 0 0 1 8 8v22a8 8 0 0 1-8 8H63z" fill="#1e3a66"/>
+
+  <!-- دوشاخه -->
+  <path d="M102 36h3a13.5 13.5 0 0 1 0 27h-3z" fill="#ffc615" stroke="#fff" stroke-width="4"
+        stroke-linejoin="round"/>
+  <g fill="#ffc615">
+    <path d="M119 41h11a3.5 3.5 0 0 1 0 7h-11z"/>
+    <path d="M119 55h11a3.5 3.5 0 0 1 0 7h-11z"/>
+  </g>
+
+  <!-- آذرخش -->
+  <path d="M88 31 57 59h15l-6 13 29-26H80z" fill="#ffc615" stroke="#fff" stroke-width="4"
+        stroke-linejoin="round"/>
+
+  <!-- کف چرخ‌دستی -->
+  <rect x="52" y="74" width="64" height="9" rx="4.5" fill="#1e3a66"/>
+
+  <!-- چرخ‌ها -->
+  <circle cx="70" cy="93" r="8.5" fill="#1e3a66"/>
+  <circle cx="70" cy="93" r="3.8" fill="#ffc615"/>
+  <circle cx="102" cy="93" r="8.5" fill="#1e3a66"/>
+  <circle cx="102" cy="93" r="3.8" fill="#ffc615"/>
+</svg>

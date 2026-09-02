@@ -16,11 +16,7 @@
             </button>
 
             <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-2.5">
-                <span class="grid size-10 place-items-center rounded-xl bg-navy-900 text-gold-400 lg:size-11">
-                    <svg class="size-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M13 2 4.5 13.5H11l-.5 8.5L19.5 10H13l.5-8Z"/>
-                    </svg>
-                </span>
+                <x-logo class="h-9 lg:h-11" />
                 <span class="hidden sm:block leading-tight">
                     <span class="block text-lg font-extrabold text-navy-900">برقی‌شاپ</span>
                     <span class="block text-[11px] text-navy-400">نماینده فروش سیماران</span>
