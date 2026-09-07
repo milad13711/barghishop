@@ -5,7 +5,7 @@
     <div class="card w-full max-w-md p-8">
         <h1 class="text-xl font-extrabold text-navy-900">کد ورود را وارد کنید</h1>
         <p class="mt-2 text-sm leading-7 text-navy-500 nums-fa">
-            کد پنج‌رقمی ارسال‌شده به شماره
+            کد شش‌رقمی ارسال‌شده به شماره
             <span class="font-bold text-navy-900" dir="ltr">{{ \App\Support\Digits::toPersian($mobile) }}</span>
             را وارد کنید.
         </p>
@@ -14,7 +14,7 @@
             @csrf
             <input type="hidden" name="mobile" value="{{ $mobile }}">
             <div>
-                <input type="text" name="code" dir="ltr" inputmode="numeric" maxlength="5"
+                <input type="text" name="code" dir="ltr" inputmode="numeric" maxlength="6"
                        class="input text-center text-2xl font-bold tracking-[0.6em]" required autofocus>
                 @error('code')<p class="mt-1.5 text-xs text-rose-600">{{ $message }}</p>@enderror
             </div>

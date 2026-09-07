@@ -35,7 +35,9 @@ class LogSmsProvider implements SmsProvider
 
     public function sendCode(string $mobile, string $footer = ''): SmsResult
     {
-        $code = (string) random_int(10000, 99999);
+        // هم‌طول با کد واقعی سرویس لیمو (۶ رقم) تا محیط توسعه با تولید یکسان باشد.
+        $length = (int) config('shop.otp.length', 6);
+        $code = (string) random_int(10 ** ($length - 1), (10 ** $length) - 1);
         Cache::put($this->cacheKey($mobile), $code, now()->addMinutes(2));
 
         Log::channel('single')->info("[OTP] $mobile: $code");
