@@ -45,7 +45,12 @@ jobs:
 
       - name: اجرای استقرار
         run: |
+          # ServerAlive* برای جلوگیری از قطع اتصال هنگام سکوت طولانی composer/npm
+          # (شبی که این خط نبود، اتصال وسط npm ci با «Broken pipe» قطع شد و چون قطعی
+          # بیرون از اسکریپت ریموت بود، تله rollback داخل اسکریپت اصلاً اجرا نشد و
+          # سایت در حالت تعمیر ماند — قدم «اطمینان از بالا بودن سایت» پایین همین را جبران می‌کند)
           ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" \
+              -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
               "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
               "DEPLOY_PATH='${DEPLOY_PATH:-/var/www/barghishop}' bash -s" <<'SCRIPT'
           set -euo pipefail
@@ -94,8 +99,21 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
+      - name: اطمینان از بالا بودن سایت (همیشه اجرا می‌شود)
+        # صرف‌نظر از موفق یا ناموفق بودن قدم بالا (حتی اگر اتصال SSH وسط کار قطع
+        # شده باشد)، این قدم تضمین می‌کند سایت هرگز در حالت تعمیر باقی نماند.
+        if: always()
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" \
+              -o ConnectTimeout=15 \
+              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              "cd '${DEPLOY_PATH:-/var/www/barghishop}' && php artisan up" || true
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
       - name: بررسی سلامت سایت
-        if: success()
+        if: always()
         run: |
           URL="${HEALTH_URL:-https://barghishop.com}"
           CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL" 2>/dev/null) || CODE="000"
