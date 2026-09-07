@@ -98,7 +98,8 @@ jobs:
         if: success()
         run: |
           URL="${HEALTH_URL:-https://barghishop.com}"
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || echo "000")
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL" 2>/dev/null)
+          CODE=${CODE:-000}
           echo "پاسخ $URL → $CODE"
           if [ "$CODE" != "200" ]; then
             echo "::warning::سایت پاسخ ۲۰۰ نداد (کد $CODE). لطفاً دستی بررسی کنید."
