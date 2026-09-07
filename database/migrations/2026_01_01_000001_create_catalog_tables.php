@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -93,8 +94,21 @@ return new class extends Migration
             $table->unsignedInteger('sort')->default(0);
             $table->timestamps();
             $table->index(['product_id', 'group']);
-            $table->index(['key', 'value']);
+            $table->index('key');
         });
+
+        // ایندکس ترکیبی (key, value) برای فیلتر مشخصات فنی.
+        // روی MySQL/InnoDB باید طول ایندکس محدود شود (سقف ۳۰۷۲ بایت با utf8mb4)،
+        // چون خود ستون value تا ۱۰۰۰ کاراکتر ذخیره می‌کند. SQLite چنین محدودیتی ندارد.
+        if (Schema::getConnection()->getDriverName() === 'mysql') {
+            DB::statement(
+                'ALTER TABLE product_specs ADD INDEX product_specs_key_value_index (`key`(100), `value`(100))'
+            );
+        } else {
+            Schema::table('product_specs', function (Blueprint $table) {
+                $table->index(['key', 'value'], 'product_specs_key_value_index');
+            });
+        }
 
         Schema::create('product_media', function (Blueprint $table) {
             $table->id();
