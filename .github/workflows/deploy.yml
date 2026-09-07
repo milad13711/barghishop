@@ -5,6 +5,14 @@ name: استقرار روی سرور
 #   Settings ← Secrets and variables ← Actions
 #     Variables: DEPLOY_ENABLED = true
 #     Secrets:   SSH_HOST, SSH_USER, SSH_KEY, (اختیاری) SSH_PORT, DEPLOY_PATH
+#
+# معماری: composer install و npm build اینجا روی رانر گیت‌هاب اجرا می‌شوند
+# (شبکه سریع و پایدار)، نه روی خود سرور. فقط خروجی آماده (vendor/ و
+# public/build/) با rsync به سرور منتقل می‌شود. علتش یک حادثه واقعی است:
+# اتصال این سرور به npm registry چند بار در وسط «npm ci» بی‌صدا گیر کرد
+# و سایت در حالت تعمیر ماند. سرور دیگر هیچ‌وقت مستقیم با npm/Packagist
+# صحبت نمی‌کند — فقط با گیت‌هاب (که قبلاً پایدار اثبات شده) و rsync از
+# همین رانر.
 on:
   push:
     branches: [main]
@@ -16,7 +24,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: git pull + build روی سرور
+    name: بیلد در Actions + استقرار روی سرور
     runs-on: ubuntu-latest
     if: vars.DEPLOY_ENABLED == 'true'
 
@@ -34,6 +42,28 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
 
+      - uses: actions/checkout@v4
+
+      - name: نصب PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+          coverage: none
+
+      - name: composer install (روی رانر گیت‌هاب)
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: نصب Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: بیلد فرانت‌اند (روی رانر گیت‌هاب)
+        run: |
+          npm ci
+          npm run build
+
       - name: آماده‌سازی کلید SSH
         run: |
           mkdir -p ~/.ssh
@@ -43,14 +73,33 @@ jobs:
         env:
           SSH_PORT: ${{ secrets.SSH_PORT }}
 
-      - name: اجرای استقرار
+      - name: حالت تعمیر
         run: |
-          # ServerAlive* برای جلوگیری از قطع اتصال هنگام سکوت طولانی composer/npm
-          # (شبی که این خط نبود، اتصال وسط npm ci با «Broken pipe» قطع شد و چون قطعی
-          # بیرون از اسکریپت ریموت بود، تله rollback داخل اسکریپت اصلاً اجرا نشد و
-          # سایت در حالت تعمیر ماند — قدم «اطمینان از بالا بودن سایت» پایین همین را جبران می‌کند)
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" -o ConnectTimeout=15 \
+              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              "cd '${DEPLOY_PATH:-/var/www/barghishop}' && php artisan down --retry=15" || true
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
+      - name: انتقال vendor و فایل‌های بیلدشده با rsync
+        run: |
+          RSYNC_SSH="ssh -i ~/.ssh/id_deploy -p ${SSH_PORT:-22} -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
+          DEST="${DEPLOY_PATH:-/var/www/barghishop}"
+          TARGET="${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+
+          rsync -az --delete -e "$RSYNC_SSH" vendor/ "$TARGET:$DEST/vendor/"
+          rsync -az --delete -e "$RSYNC_SSH" public/build/ "$TARGET:$DEST/public/build/"
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
+      - name: اجرای استقرار روی سرور
+        run: |
+          # این قدم دیگر composer/npm صدا نمی‌زند — فقط git (منبع، سبک و
+          # قبلاً پایدار اثبات‌شده)، مهاجرت دیتابیس و کش، همه محلی و سریع.
           ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" \
-              -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+              -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
               "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
               "DEPLOY_PATH='${DEPLOY_PATH:-/var/www/barghishop}' bash -s" <<'SCRIPT'
           set -euo pipefail
@@ -58,30 +107,8 @@ jobs:
           cd "$DEPLOY_PATH"
           echo "▶ استقرار در $DEPLOY_PATH"
 
-          # نسخه فعلی را نگه می‌داریم تا در صورت خطا برگردیم
-          PREVIOUS=$(git rev-parse HEAD)
-          echo "نسخه فعلی: $PREVIOUS"
-
-          php artisan down --retry=15 || true
-
-          rollback() {
-            echo "::error::استقرار شکست خورد — بازگشت به $PREVIOUS"
-            git reset --hard "$PREVIOUS"
-            composer install --no-dev --optimize-autoloader --no-interaction || true
-            php artisan up || true
-            exit 1
-          }
-          trap rollback ERR
-
           git fetch --prune origin main
           git reset --hard origin/main
-
-          composer install --no-dev --optimize-autoloader --no-interaction
-
-          # devDependencies لازم است چون Vite و Tailwind همان‌جا هستند؛
-          # فقط برای بیلد لازم می‌شوند، بعد از آن اثری روی اجرای سایت ندارند
-          npm ci
-          npm run build
 
           php artisan migrate --force
 
@@ -90,7 +117,6 @@ jobs:
           php artisan view:cache
           php artisan storage:link || true
 
-          trap - ERR
           php artisan up
 
           echo "✔ استقرار انجام شد: $(git rev-parse --short HEAD)"
@@ -100,8 +126,8 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
       - name: اطمینان از بالا بودن سایت (همیشه اجرا می‌شود)
-        # صرف‌نظر از موفق یا ناموفق بودن قدم بالا (حتی اگر اتصال SSH وسط کار قطع
-        # شده باشد)، این قدم تضمین می‌کند سایت هرگز در حالت تعمیر باقی نماند.
+        # صرف‌نظر از موفق یا ناموفق بودن قدم بالا، این قدم تضمین می‌کند
+        # سایت هرگز در حالت تعمیر باقی نماند.
         if: always()
         run: |
           ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" \
