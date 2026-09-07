@@ -66,11 +66,19 @@ class LimoSmsProvider implements SmsProvider
         }
 
         $json = $response->json() ?? [];
-        $ok = $response->successful() && (bool) data_get($json, 'Success', false);
+
+        // پاسخ واقعی سرور فیلدها را حروف کوچک برمی‌گرداند (success/messageId)، نه
+        // PascalCase مستندات (Success/MessageId) — با تست پیامک واقعی کشف شد.
+        // هر دو حالت را چک می‌کنیم تا اگر روزی endpoint دیگری فرق داشت نشکند.
+        $ok = $response->successful()
+            && (bool) (data_get($json, 'success') ?? data_get($json, 'Success', false));
+
+        $messageId = data_get($json, 'messageId.0') ?? data_get($json, 'MessageId.0');
+        $message = data_get($json, 'message') ?? data_get($json, 'Message');
 
         return $ok
-            ? SmsResult::success((string) data_get($json, 'MessageId.0', ''), $json)
-            : SmsResult::failure((string) (data_get($json, 'Message') ?: 'ارسال پیامک ناموفق بود.'), $json);
+            ? SmsResult::success((string) ($messageId ?? ''), $json)
+            : SmsResult::failure((string) ($message ?: 'ارسال پیامک ناموفق بود.'), $json);
     }
 
     protected function client()
