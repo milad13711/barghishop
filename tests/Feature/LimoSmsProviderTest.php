@@ -78,4 +78,61 @@ class LimoSmsProviderTest extends TestCase
                 && $request['MobileNumber'] === ['09908008011'];
         });
     }
+
+    public function test_send_code_hits_the_dedicated_otp_endpoint(): void
+    {
+        Http::fake([
+            'api.limosms.com/*' => Http::response(['success' => true, 'message' => 'کد تایید با موفقیت ارسال شد']),
+        ]);
+
+        $result = (new LimoSmsProvider)->sendCode('09908008011', 'برقی\u200cشاپ');
+
+        $this->assertTrue($result->ok);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.limosms.com/api/sendcode'
+                && $request['Mobile'] === '09908008011';
+        });
+    }
+
+    public function test_check_code_reports_the_real_persian_error_for_expired_code(): void
+    {
+        Http::fake([
+            'api.limosms.com/*' => Http::response(['success' => false, 'message' => 'کد تایید منقضی شده است']),
+        ]);
+
+        $result = (new LimoSmsProvider)->checkCode('09908008011', '186542');
+
+        $this->assertFalse($result->ok);
+        $this->assertSame('کد تایید منقضی شده است', $result->error);
+    }
+
+    public function test_check_code_reports_the_real_persian_error_for_wrong_code(): void
+    {
+        Http::fake([
+            'api.limosms.com/*' => Http::response(['success' => false, 'message' => 'کدتایید نادرست می باشد']),
+        ]);
+
+        $result = (new LimoSmsProvider)->checkCode('09908008011', '00000');
+
+        $this->assertFalse($result->ok);
+        $this->assertSame('کدتایید نادرست می باشد', $result->error);
+    }
+
+    public function test_check_code_succeeds_for_a_correct_code(): void
+    {
+        Http::fake([
+            'api.limosms.com/*' => Http::response(['success' => true, 'message' => 'تایید موفق']),
+        ]);
+
+        $result = (new LimoSmsProvider)->checkCode('09908008011', '186542');
+
+        $this->assertTrue($result->ok);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.limosms.com/api/checkcode'
+                && $request['Mobile'] === '09908008011'
+                && $request['Code'] === '186542';
+        });
+    }
 }

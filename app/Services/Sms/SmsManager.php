@@ -78,6 +78,32 @@ class SmsManager
         return $this->finish($log, $result);
     }
 
+    /**
+     * ارسال کد ورود. عمداً از send()/sendPattern() استفاده نمی‌کند — درایور
+     * لیمو خودش کد را می‌سازد و مسیر تحویل تضمین‌شده جداگانه‌ای دارد؛ پیامک
+     * عمومی حاوی کد از خط اشتراکی توسط اپراتور فیلتر می‌شود (با تست واقعی
+     * کشف شد: «ارسال‌شده» گزارش شد ولی هرگز به گوشی نرسید).
+     */
+    public function sendCode(string $mobile, ?Model $source = null): SmsLog
+    {
+        $mobile = Mobile::normalize($mobile);
+        $log = $this->log($mobile, 'otp', $source, ['body' => 'sendcode']);
+
+        if (! Mobile::isValid($mobile)) {
+            return tap($log)->update(['status' => 'failed', 'error' => 'شماره موبایل نامعتبر است.']);
+        }
+
+        $result = $this->driver()->sendCode($mobile, config('shop.name'));
+
+        return $this->finish($log, $result);
+    }
+
+    /** بررسی کد وارد‌شده کاربر نزد درایور. پاسخ شامل پیام فارسی واقعی (منقضی/نادرست) است. */
+    public function checkCode(string $mobile, string $code): \App\Contracts\SmsResult
+    {
+        return $this->driver()->checkCode(Mobile::normalize($mobile), $code);
+    }
+
     protected function log(string $mobile, ?string $event, ?Model $source, array $extra): SmsLog
     {
         return SmsLog::create(array_merge([

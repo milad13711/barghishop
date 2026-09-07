@@ -10,12 +10,20 @@ use App\Services\Cart\CartService;
 use App\Services\Sms\SmsManager;
 use App\Support\Casts\Mobile;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
  * ورود مشتری با موبایل + کد یکبار مصرف.
- * کد به‌صورت هش ذخیره می‌شود و هرگز در لاگ ظاهر نمی‌شود.
+ *
+ * برخلاف طرح اولیه، خودِ این کنترلر دیگر کد نمی‌سازد و هش نمی‌کند —
+ * درایور پیامک (متد اختصاصی sendCode/checkCode لیمو) این کار را انجام
+ * می‌دهد. علت: پیامک عمومی حاوی کد از خط اشتراکی توسط اپراتور فیلتر
+ * می‌شد (با تست واقعی کشف شد: «ارسال‌شده» گزارش می‌شد ولی هرگز نمی‌رسید)،
+ * ولی مسیر اختصاصی احراز هویت تحویل تضمین‌شده دارد.
+ *
+ * جدول otp_codes فقط برای محدودسازی نرخ درخواست نگه داشته شده؛ ستون
+ * code_hash دیگر معنای واقعی ندارد (مقدار جایگزین می‌نویسیم تا NOT NULL
+ * نشکند) — خودِ کد و اعتبارسنجی‌اش کاملاً نزد درایور پیامک است.
  */
 class OtpLoginController extends Controller
 {
@@ -39,19 +47,23 @@ class OtpLoginController extends Controller
             throw ValidationException::withMessages(['mobile' => 'شماره موبایل معتبر نیست.']);
         }
 
-        $this->guardRateLimit($mobile, $request->ip());
+        $this->guardRateLimit($mobile);
 
-        $code = (string) random_int(10000, 99999);
+        $log = $this->sms->sendCode($mobile);
 
         OtpCode::create([
             'mobile'     => $mobile,
-            'code_hash'  => Hash::make($code),
+            'code_hash'  => 'external', // خودِ کد نزد درایور پیامک است، نه اینجا
             'purpose'    => 'login',
             'ip'         => $request->ip(),
             'expires_at' => now()->addSeconds((int) config('shop.otp.ttl_seconds')),
         ]);
 
-        $this->sms->sendPattern($mobile, 'otp', ['code' => $code]);
+        if ($log->status !== 'sent') {
+            throw ValidationException::withMessages([
+                'mobile' => $log->error ?: 'ارسال کد با خطا مواجه شد. لطفاً دوباره تلاش کنید.',
+            ]);
+        }
 
         return redirect()->route('auth.verify.form', ['mobile' => $mobile])
             ->with('success', 'کد ورود برای شما پیامک شد.');
@@ -74,22 +86,13 @@ class OtpLoginController extends Controller
         $mobile = Mobile::normalize($request->input('mobile'));
         $code   = \App\Support\Digits::toEnglish((string) $request->input('code'));
 
-        $otp = OtpCode::where('mobile', $mobile)
-            ->whereNull('used_at')
-            ->latest()
-            ->first();
+        $result = $this->sms->checkCode($mobile, $code);
 
-        if (! $otp || ! $otp->isUsable()) {
-            throw ValidationException::withMessages(['code' => 'کد منقضی شده است. دوباره درخواست دهید.']);
+        if (! $result->ok) {
+            throw ValidationException::withMessages([
+                'code' => $result->error ?: 'کد وارد شده نادرست است.',
+            ]);
         }
-
-        if (! Hash::check($code, $otp->code_hash)) {
-            $otp->increment('attempts');
-
-            throw ValidationException::withMessages(['code' => 'کد وارد شده نادرست است.']);
-        }
-
-        $otp->update(['used_at' => now()]);
 
         // is_active را صریح ست می‌کنیم؛ مقدار پیش‌فرض دیتابیس روی نمونه تازه‌ساخته‌شده
         // بارگذاری نمی‌شود و در نتیجه null (falsy) می‌ماند.
@@ -127,7 +130,7 @@ class OtpLoginController extends Controller
         return redirect()->route('home');
     }
 
-    protected function guardRateLimit(string $mobile, ?string $ip): void
+    protected function guardRateLimit(string $mobile): void
     {
         $recent = OtpCode::where('mobile', $mobile)
             ->where('created_at', '>=', now()->subHour())

@@ -10,15 +10,20 @@ use Illuminate\Support\Facades\Log;
 /**
  * لیمو اس‌ام‌اس (اکسیرپیامک) — https://api.limosms.com
  *
- * فیلدهای send() از مستندات واقعی «متد ارسال پیام» در پنل کاربری تأیید شده‌اند
- * (https://api.limosms.com/api/sendsms، پارامترهای SenderNumber/Message/MobileNumber،
- * پاسخ Success/Message/MessageId). هنگام تست با کلید واقعی، اگر SenderNumber خالی
- * رد شود و سرویس خطا داد، شماره خط اختصاصی را در LIMO_SMS_SENDER ست کنید.
+ * فیلدهای send() و sendCode()/checkCode() از مستندات واقعی پنل تأیید شده‌اند
+ * و هرکدام با یک ارسال واقعی به شماره تست کنترل شدند:
+ *   - /sendsms، /sendcode، /checkcode: SenderNumber/Message/MobileNumber و Mobile/Code
+ *   - پاسخ واقعی سرور همیشه camelCase است (success/message)، نه PascalCase
+ *     مستندات (Success/Message) — با تست واقعی کشف شد، هر دو حالت پشتیبانی می‌شود.
+ *
+ * نکته مهم درباره OTP: پیامک عمومی حاوی کد تأیید از طریق /sendsms با کلید
+ * تست واقعاً «ارسال‌شده» گزارش شد (messageId معتبر) ولی هرگز به گوشی نرسید —
+ * اپراتور محتوای شبیه کد تأیید را از خط اشتراکی فیلتر می‌کند. مسیر اختصاصی
+ * /sendcode و /checkcode تنها راهی است که تحویل واقعی تأیید شد؛ به همین دلیل
+ * OTP هرگز نباید از send()/sendPattern() عبور کند.
  *
  * sendPattern() و credit() هنوز تأیید نشده‌اند — بخش‌های «ارسال پترن» و «دریافت
- * اعتبار» در پنل با جاوااسکریپت لود می‌شوند و مستقیم قابل واکشی نبودند. تا وقتی
- * SMS_PATTERN_* در .env خالی است، SmsManager خودکار از send() با متن آماده
- * استفاده می‌کند و اصلاً به sendPattern() نمی‌رسد — پس این نقص فعلاً بی‌اثر است.
+ * اعتبار» در پنل با جاوااسکریپت لود می‌شوند و مستقیم قابل واکشی نبودند.
  */
 class LimoSmsProvider implements SmsProvider
 {
@@ -46,6 +51,22 @@ class LimoSmsProvider implements SmsProvider
                 ->map(fn ($value, $key) => ['Name' => $key, 'Value' => (string) $value])
                 ->values()
                 ->all(),
+        ]);
+    }
+
+    public function sendCode(string $mobile, string $footer = ''): SmsResult
+    {
+        return $this->call('/sendcode', array_filter([
+            'Mobile' => $mobile,
+            'Footer' => $footer,
+        ], fn ($v) => $v !== ''));
+    }
+
+    public function checkCode(string $mobile, string $code): SmsResult
+    {
+        return $this->call('/checkcode', [
+            'Mobile' => $mobile,
+            'Code'   => $code,
         ]);
     }
 

@@ -4,11 +4,16 @@ namespace App\Services\Sms\Providers;
 
 use App\Contracts\SmsProvider;
 use App\Contracts\SmsResult;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /** درایور توسعه: پیامک واقعی ارسال نمی‌کند، فقط لاگ می‌کند. */
 class LogSmsProvider implements SmsProvider
 {
+    protected function cacheKey(string $mobile): string
+    {
+        return "otp:log:$mobile";
+    }
     public function code(): string
     {
         return 'log';
@@ -26,6 +31,33 @@ class LogSmsProvider implements SmsProvider
         Log::channel('single')->info("[SMS:$patternCode] $mobile: ".json_encode($params, JSON_UNESCAPED_UNICODE));
 
         return SmsResult::success('log-'.uniqid());
+    }
+
+    public function sendCode(string $mobile, string $footer = ''): SmsResult
+    {
+        $code = (string) random_int(10000, 99999);
+        Cache::put($this->cacheKey($mobile), $code, now()->addMinutes(2));
+
+        Log::channel('single')->info("[OTP] $mobile: $code");
+
+        return SmsResult::success('log-'.uniqid());
+    }
+
+    public function checkCode(string $mobile, string $code): SmsResult
+    {
+        $expected = Cache::get($this->cacheKey($mobile));
+
+        if ($expected === null) {
+            return SmsResult::failure('کد تایید منقضی شده است');
+        }
+
+        if (! hash_equals($expected, $code)) {
+            return SmsResult::failure('کدتایید نادرست می باشد');
+        }
+
+        Cache::forget($this->cacheKey($mobile));
+
+        return SmsResult::success();
     }
 
     public function credit(): ?int
