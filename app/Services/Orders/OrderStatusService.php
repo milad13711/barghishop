@@ -4,7 +4,9 @@ namespace App\Services\Orders;
 
 use App\Models\Order;
 use App\Services\Loyalty\LoyaltyService;
+use App\Services\Push\WebPushService;
 use App\Services\Sms\SmsManager;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -20,6 +22,7 @@ class OrderStatusService
         protected SmsManager $sms,
         protected LoyaltyService $loyalty,
         protected StockService $stock,
+        protected WebPushService $push,
     ) {}
 
     public function transition(
@@ -85,5 +88,30 @@ class OrderStatusService
 
             default => null,
         };
+
+        $this->notifyCustomer($order, $to);
+    }
+
+    protected function notifyCustomer(Order $order, string $to): void
+    {
+        if (! $order->customer) {
+            return;
+        }
+
+        $amount = Money::format($order->grand_total, false);
+
+        [$title, $body] = match ($to) {
+            Order::PAID       => ["پرداخت سفارش {$order->code} تأیید شد", "مبلغ {$amount} تومان با موفقیت پرداخت شد."],
+            Order::PROCESSING => ["سفارش {$order->code} در حال آماده‌سازی", 'سفارش شما آماده ارسال می‌شود.'],
+            Order::SHIPPED    => ["سفارش {$order->code} ارسال شد", $order->tracking_code
+                ? "کد رهگیری: {$order->tracking_code}"
+                : 'به‌زودی کد رهگیری اعلام می‌شود.'],
+            Order::DELIVERED  => ["سفارش {$order->code} تحویل داده شد", 'امیدواریم از خریدتان راضی باشید.'],
+            default           => [null, null],
+        };
+
+        if ($title) {
+            $this->push->notify($order->customer, $title, $body, route('account.orders.show', $order));
+        }
     }
 }

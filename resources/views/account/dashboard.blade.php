@@ -7,6 +7,9 @@
         <div class="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{{ session('success') }}</div>
     @endif
 
+    <x-push-banner title="اعلان‌های سفارش را فعال کنید"
+                   text="همین که سفارشتان ارسال یا تحویل داده شد، روی همین دستگاه باخبر شوید." />
+
     <div class="grid gap-4 sm:grid-cols-3">
         @foreach([
             ['کل سفارش‌ها', $stats['orders_count'], 'electric'],

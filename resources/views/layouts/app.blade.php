@@ -3,6 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if($vapidKey = config('shop.push.public_key'))
+        <meta name="vapid-public-key" content="{{ $vapidKey }}">
+    @endif
 
     <title>@yield('title', $seo['title'] ?? config('shop.name'))</title>
     <meta name="description" content="@yield('description', $seo['description'] ?? '')">
@@ -21,8 +25,16 @@
     <meta name="theme-color" content="#1e3a66">
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/icons/icon-180.png">
     <meta property="og:image" content="{{ url('/images/logo.svg') }}">
+
+    {{-- برنامه وب قابل‌نصب (PWA) --}}
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="application-name" content="برقی‌شاپ">
+    <meta name="apple-mobile-web-app-title" content="برقی‌شاپ">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
 
     <link rel="alternate" hreflang="fa-IR" href="{{ url()->current() }}">
 

@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -67,6 +68,11 @@ class Customer extends Authenticatable implements AuthenticatableContract
     public function wishlist(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
+    }
+
+    public function pushSubscriptions(): MorphMany
+    {
+        return $this->morphMany(PushSubscription::class, 'subscriber');
     }
 
     public function defaultAddress(): ?Address

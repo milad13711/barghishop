@@ -4,6 +4,9 @@
 @section('content')
 <div class="space-y-6">
 
+    <x-push-banner title="اعلان سفارش جدید را فعال کنید"
+                   text="با ثبت هر سفارش تازه، روی همین دستگاه اعلان دریافت کنید." />
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach([
             ['سفارش‌های امروز', \App\Support\Digits::toPersian((string) $stats['today_orders']), 'عدد'],

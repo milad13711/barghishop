@@ -4,8 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if($vapidKey = config('shop.push.public_key'))
+        <meta name="vapid-public-key" content="{{ $vapidKey }}">
+    @endif
     <title>@yield('title', 'پنل مدیریت') — {{ config('shop.name') }}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icons/icon-180.png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-slate-100">

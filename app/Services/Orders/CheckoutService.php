@@ -27,6 +27,7 @@ class CheckoutService
         protected CartService $cart,
         protected ShippingCalculator $shipping,
         protected SmsManager $sms,
+        protected \App\Services\Push\WebPushService $push,
     ) {}
 
     public function place(
@@ -130,6 +131,12 @@ class CheckoutService
                 'code'   => $order->code,
                 'amount' => Money::format($order->grand_total, false),
             ], $order);
+
+            $this->push->notifyAdmins(
+                'سفارش جدید ثبت شد',
+                "سفارش {$order->code} به مبلغ ".Money::format($order->grand_total, false).' تومان',
+                route('admin.orders.show', $order),
+            );
 
             return $order;
         });

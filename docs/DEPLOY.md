@@ -226,6 +226,29 @@ php artisan view:cache
 php artisan up
 ```
 
+## پوش نوتیفیکیشن (PWA)
+
+سایت قابل نصب روی صفحه اصلی گوشی است (manifest.webmanifest + sw.js) و پوش
+نوتیفیکیشن با استاندارد Web Push کار می‌کند — بدون Firebase، فقط یک جفت
+کلید VAPID که یک‌بار ساخته می‌شود:
+
+```bash
+php artisan tinker --execute="print_r(Minishlink\WebPush\VAPID::createVapidKeys());"
+```
+
+مقادیر را در `.env` بگذارید و **دیگر عوضشان نکنید** — تغییرشان یعنی همه
+اشتراک‌های پوش قبلی کاربران باطل می‌شود:
+
+```env
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:info@barghishop.com
+```
+
+آیکون‌های PWA در `public/icons/` از روی لوگوی کامل ساخته شده‌اند (نه
+نشان ساده هدر) — چون بوم آیکون صفحه اصلی گوشی بزرگ‌تر است و جزئیات کامل
+لوگو در آن خوانا می‌ماند.
+
 ## چک‌لیست پیش از انتشار
 
 - [ ] `APP_DEBUG=false` و `APP_ENV=production`

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Account;
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Push\PushSubscriptionController;
 use App\Http\Controllers\Auth\OtpLoginController;
 use App\Http\Controllers\Shop;
 use Illuminate\Support\Facades\Route;
@@ -147,4 +148,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| پوش نوتیفیکیشن (مشترک بین مشتری و مدیر پنل)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:customer,web')->prefix('push')->name('push.')->group(function () {
+    Route::post('/subscribe', [PushSubscriptionController::class, 'store'])->name('subscribe');
+    Route::post('/unsubscribe', [PushSubscriptionController::class, 'destroy'])->name('unsubscribe');
 });
