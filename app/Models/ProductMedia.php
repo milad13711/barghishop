@@ -21,8 +21,9 @@ class ProductMedia extends Model
 
     public function url(): string
     {
+        // نسبی به ریشه سایت؛ به APP_URL و تفاوت www/بدون‌www وابسته نیست
         return str_starts_with($this->path, 'http')
             ? $this->path
-            : Storage::disk('public')->url($this->path);
+            : '/storage/'.ltrim($this->path, '/');
     }
 }

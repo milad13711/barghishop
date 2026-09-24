@@ -90,8 +90,23 @@ class Product extends Model
             ?? $this->media->first()?->path;
     }
 
+    /** مدل‌های فعال (رنگ، تعداد کانال و…). محصول بدون مدل، مثل قبل با موجودی خودش کار می‌کند. */
+    public function activeVariants(): \Illuminate\Support\Collection
+    {
+        return $this->variants->where('is_active', true)->values();
+    }
+
+    public function hasVariants(): bool
+    {
+        return $this->activeVariants()->isNotEmpty();
+    }
+
     public function isAvailable(): bool
     {
+        if ($this->hasVariants()) {
+            return $this->activeVariants()->contains(fn (ProductVariant $v) => $v->isAvailable($this));
+        }
+
         return ! $this->track_stock || $this->stock > 0 || $this->allow_backorder;
     }
 

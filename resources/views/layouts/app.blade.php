@@ -46,6 +46,7 @@
 
     @include('partials.topbar')
     @include('partials.header')
+    @include('partials.mobile-drawer')
 
     <main class="flex-1">
         @yield('content')

@@ -24,13 +24,13 @@ class HomeController extends Controller
             'banners'    => Banner::live('home_hero')->get(),
             'categories' => Category::active()->roots()->orderBy('sort')->get(),
             'featured'   => Product::published()->where('is_featured', true)
-                                ->with(['brand', 'media', 'prices', 'category'])
+                                ->with(['brand', 'media', 'prices', 'category', 'variants.prices'])
                                 ->latest('published_at')->limit(8)->get(),
             'newest'     => Product::published()
-                                ->with(['brand', 'media', 'prices', 'category'])
+                                ->with(['brand', 'media', 'prices', 'category', 'variants.prices'])
                                 ->latest('published_at')->limit(8)->get(),
             'bestSellers' => Product::published()
-                                ->with(['brand', 'media', 'prices', 'category'])
+                                ->with(['brand', 'media', 'prices', 'category', 'variants.prices'])
                                 ->orderByDesc('sold_count')->limit(8)->get(),
             'brands'     => Brand::active()->orderBy('sort')->get(),
             'posts'      => Post::published()->with('category')->latest('published_at')->limit(3)->get(),

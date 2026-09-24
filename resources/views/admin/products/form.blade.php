@@ -138,6 +138,89 @@
             @endforeach
         </section>
 
+        {{-- مدل‌های محصول --}}
+        <section class="card space-y-4 p-5"
+                 x-data="{
+                    rows: {{ \Illuminate\Support\Js::from($variantRows) }},
+                    tiers: {{ \Illuminate\Support\Js::from($tiers->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values()) }},
+                    add() {
+                        const prices = {};
+                        this.tiers.forEach(t => prices[t.id] = { amount: '', compare_at: '' });
+                        this.rows.push({ id: '', name: '', sku: '', options: '', stock: 0, weight_grams: '', is_active: true, prices });
+                    },
+                 }">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-navy-900">مدل‌ها (رنگ، تعداد کانال و…)</h2>
+                    <p class="mt-1 text-[11px] leading-6 text-navy-400">
+                        اگر محصول چند مدل با قیمت یا موجودی متفاوت دارد اینجا تعریف کنید؛ مشتری پیش از افزودن به سبد مدل را انتخاب می‌کند
+                        و قیمت و موجودی همان مدل نمایش داده و از انبار همان مدل کسر می‌شود. اگر خالی بماند، محصول تک‌مدلی است.
+                    </p>
+                </div>
+                <button type="button" @click="add()" class="shrink-0 text-xs font-semibold text-electric-600">+ افزودن مدل</button>
+            </div>
+
+            @error('variants')<p class="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{{ $message }}</p>@enderror
+
+            <template x-for="(row, i) in rows" :key="i">
+                <div class="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-navy-100">
+                    <input type="hidden" :name="`variants[${i}][id]`" :value="row.id">
+
+                    <div class="grid gap-2 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-[11px] font-semibold text-navy-600">نام مدل *</label>
+                            <input type="text" :name="`variants[${i}][name]`" x-model="row.name" class="input !py-2 !text-xs" placeholder="مثلاً: سفید یا ۴ کانال">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-[11px] font-semibold text-navy-600">ویژگی‌ها (برای انتخاب‌گر)</label>
+                            <input type="text" :name="`variants[${i}][options]`" x-model="row.options" class="input !py-2 !text-xs" placeholder="رنگ: سفید | کانال: ۴">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-[11px] font-semibold text-navy-600">کد کالای مدل (خالی = خودکار)</label>
+                            <input type="text" :name="`variants[${i}][sku]`" x-model="row.sku" dir="ltr" class="input !py-2 !text-xs">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="mb-1.5 block text-[11px] font-semibold text-navy-600">موجودی انبار</label>
+                                <input type="number" min="0" :name="`variants[${i}][stock]`" x-model="row.stock" class="input !py-2 !text-xs">
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-[11px] font-semibold text-navy-600">وزن (گرم)</label>
+                                <input type="number" min="0" :name="`variants[${i}][weight_grams]`" x-model="row.weight_grams" class="input !py-2 !text-xs" placeholder="پیش‌فرض محصول">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mb-1.5 text-[11px] font-semibold text-navy-600">قیمت این مدل (تومان) — خرده‌فروشی الزامی است، بقیه سطوح اختیاری</div>
+                        <div class="space-y-2">
+                            <template x-for="t in tiers" :key="t.id">
+                                <div class="grid grid-cols-2 items-center gap-2 sm:grid-cols-[110px_1fr_1fr]">
+                                    <span class="col-span-2 text-[11px] font-semibold text-navy-500 sm:col-span-1" x-text="t.name"></span>
+                                    <input type="text" dir="ltr" :name="`variants[${i}][prices][${t.id}][amount]`" x-model="row.prices[t.id].amount"
+                                           class="input !py-2 !text-xs" placeholder="قیمت فروش">
+                                    <input type="text" dir="ltr" :name="`variants[${i}][prices][${t.id}][compare_at]`" x-model="row.prices[t.id].compare_at"
+                                           class="input !py-2 !text-xs" placeholder="قیمت قبل از تخفیف">
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="flex cursor-pointer items-center gap-2 text-xs text-navy-600">
+                            <input type="checkbox" value="1" :name="`variants[${i}][is_active]`" x-model="row.is_active"
+                                   class="size-4 rounded border-navy-200 text-electric-500">
+                            فعال (قابل سفارش)
+                        </label>
+                        <button type="button" @click="if (confirm('این مدل حذف شود؟')) rows.splice(i, 1)"
+                                class="text-xs font-semibold text-rose-600">حذف مدل</button>
+                    </div>
+                </div>
+            </template>
+
+            <p x-show="rows.length === 0" class="text-xs text-navy-400">هنوز مدلی تعریف نشده؛ محصول تک‌مدلی است.</p>
+        </section>
+
         {{-- سئو --}}
         <section class="card space-y-4 p-5">
             <h2 class="text-sm font-bold text-navy-900">سئو</h2>
@@ -163,6 +246,9 @@
 
         <div class="card space-y-4 p-5">
             <h2 class="text-sm font-bold text-navy-900">موجودی و انبار</h2>
+            @if($product->exists && $product->variants->isNotEmpty())
+                <p class="rounded-lg bg-electric-50 px-3 py-2 text-[11px] leading-6 text-electric-800">این محصول مدل دارد؛ موجودی هر مدل جدا در بخش «مدل‌ها» است و موجودی کل خودکار جمع مدل‌های فعال می‌شود.</p>
+            @endif
             <div>
                 <label class="mb-2 block text-xs font-semibold text-navy-700">موجودی</label>
                 <input type="number" name="stock" value="{{ old('stock', $product->stock ?? 0) }}" class="input !py-2.5">
@@ -193,6 +279,7 @@
 
         <div class="card space-y-4 p-5">
             <h2 class="text-sm font-bold text-navy-900">تصاویر</h2>
+            <p class="text-[11px] leading-6 text-navy-400">چند تصویر از زوایای مختلف بارگذاری کنید؛ مشتری می‌تواند بین آن‌ها جابه‌جا شود و روی هر کدام زوم کند.</p>
             <input type="file" name="images[]" multiple accept="image/*"
                    class="w-full text-xs text-navy-600 file:ml-3 file:rounded-lg file:border-0 file:bg-navy-900 file:px-3 file:py-2 file:text-xs file:text-white">
 
@@ -204,6 +291,13 @@
                             @if($media->is_primary)
                                 <span class="absolute right-1 top-1 badge bg-gold-500 !px-1.5 !py-0.5 text-[9px] text-navy-950">اصلی</span>
                             @endif
+                            <div class="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-navy-900/70 p-1 text-[10px] opacity-0 transition group-hover:opacity-100">
+                                @unless($media->is_primary)
+                                    <button type="submit" form="media-primary-{{ $media->id }}" class="text-white">اصلی کن</button>
+                                @endunless
+                                <button type="submit" form="media-delete-{{ $media->id }}" class="mr-auto text-rose-300"
+                                        onclick="return confirm('این تصویر حذف شود؟')">حذف</button>
+                            </div>
                         </div>
                     @endforeach
                 </div>
@@ -220,6 +314,10 @@
 </form>
 
 @if($product->exists)
+    @foreach($product->media as $media)
+        <form id="media-primary-{{ $media->id }}" action="{{ route('admin.products.media.primary', [$product, $media->id]) }}" method="post" class="hidden">@csrf</form>
+        <form id="media-delete-{{ $media->id }}" action="{{ route('admin.products.media.destroy', [$product, $media->id]) }}" method="post" class="hidden">@csrf @method('DELETE')</form>
+    @endforeach
     <form id="delete-product" action="{{ route('admin.products.destroy', $product) }}" method="post" class="hidden">
         @csrf @method('DELETE')
     </form>

@@ -122,6 +122,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/products/{product}/edit', [Admin\ProductController::class, 'edit'])->name('products.edit');
         Route::post('/products/{product}', [Admin\ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [Admin\ProductController::class, 'destroy'])->name('products.destroy');
+        Route::post('/products/{product}/media/{media}/primary', [Admin\ProductController::class, 'makePrimaryMedia'])->name('products.media.primary');
         Route::delete('/products/{product}/media/{media}', [Admin\ProductController::class, 'deleteMedia'])->name('products.media.destroy');
 
         Route::get('/categories', [Admin\TaxonomyController::class, 'categories'])->name('categories.index');

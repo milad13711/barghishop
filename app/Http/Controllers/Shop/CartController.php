@@ -30,15 +30,36 @@ class CartController extends Controller
             'qty'        => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
-        $product = Product::published()->findOrFail($data['product_id']);
+        $product = Product::published()->with('variants')->findOrFail($data['product_id']);
 
         abort_unless($product->isAvailable(), 422, 'این محصول در حال حاضر موجود نیست.');
 
-        $this->cart->add(
-            $product,
-            (int) ($data['qty'] ?? 1),
-            isset($data['variant_id']) ? ProductVariant::find($data['variant_id']) : null,
-        );
+        $variant = null;
+        $qty = (int) ($data['qty'] ?? 1);
+
+        if ($product->hasVariants()) {
+            // مدل باید صریح انتخاب شود و به همین محصول تعلق داشته باشد
+            $variant = $product->activeVariants()->firstWhere('id', (int) ($data['variant_id'] ?? 0));
+
+            if (! $variant) {
+                return back()->withErrors(['variant' => 'لطفاً پیش از افزودن به سبد، مدل مورد نظر را انتخاب کنید.']);
+            }
+
+            if (! $variant->isAvailable($product)) {
+                return back()->withErrors(['variant' => 'مدل انتخابی در حال حاضر موجود نیست.']);
+            }
+        }
+
+        $max = $variant ? $variant->maxOrderable($product) : ($product->track_stock && ! $product->allow_backorder ? max(0, $product->stock) : null);
+        $inCart = (int) ($this->cart->current()?->items
+            ->first(fn ($i) => $i->product_id === $product->id && $i->product_variant_id === $variant?->id)?->qty ?? 0);
+
+        if ($max !== null && $inCart + $qty > $max) {
+            return back()->withErrors(['variant' => "موجودی این مدل {$max} عدد است"
+                .($inCart ? " و {$inCart} عدد از آن در سبد شماست." : '.')]);
+        }
+
+        $this->cart->add($product, $qty, $variant);
 
         return back()->with('success', 'محصول به سبد خرید اضافه شد.');
     }
@@ -47,7 +68,19 @@ class CartController extends Controller
     {
         $this->authorizeItem($item);
 
-        $this->cart->updateQty($item, (int) $request->integer('qty'));
+        $qty = (int) $request->integer('qty');
+        $product = $item->product;
+
+        $max = $item->variant
+            ? $item->variant->maxOrderable($product)
+            : ($product->track_stock && ! $product->allow_backorder ? max(0, $product->stock) : null);
+
+        if ($qty > 0 && $max !== null && $qty > $max) {
+            $qty = max(1, $max);
+            session()->flash('success', "حداکثر موجودی این کالا {$max} عدد است؛ تعداد اصلاح شد.");
+        }
+
+        $this->cart->updateQty($item, $qty);
 
         return back();
     }

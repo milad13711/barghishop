@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductSpec;
 use App\Services\Pricing\PriceResolver;
 use App\Support\Digits;
+use App\Support\Money;
 use App\Support\Seo\Schema;
 use Illuminate\Http\Request;
 
@@ -40,7 +41,7 @@ class CatalogController extends Controller
 
     protected function listing(Request $request, ?Category $category, ?Brand $brand = null, bool $search = false)
     {
-        $query = Product::published()->with(['brand', 'media', 'prices', 'category']);
+        $query = Product::published()->with(['brand', 'media', 'prices', 'category', 'variants.prices']);
 
         if ($category) {
             $query->whereIn('category_id', $category->descendantIds());
@@ -141,6 +142,68 @@ class CatalogController extends Controller
         return 'فروشگاه محصولات | '.config('shop.name');
     }
 
+    /**
+     * داده انتخاب‌گر مدل‌ها برای صفحه محصول. قیمت هر مدل همین‌جا برای همین
+     * مشتری (خرده/عمده) از PriceResolver می‌آید تا سمت مرورگر هیچ محاسبه قیمتی
+     * نداشته باشیم و قیمت عمده هم فقط به همکار تأییدشده برسد.
+     */
+    protected function variantData(Product $product, PriceResolver $resolver, $customer): array
+    {
+        $active = $product->activeVariants();
+
+        if ($active->isEmpty()) {
+            return ['variants' => [], 'groups' => [], 'default' => null, 'initial' => null];
+        }
+
+        $wholesaler = $customer?->isWholesaler();
+
+        $rows = $active->map(function (\App\Models\ProductVariant $v) use ($product, $resolver, $customer, $wholesaler) {
+            $price = $resolver->for($v, $customer);
+            $retail = $wholesaler ? $resolver->retailFor($v) : null;
+            $max = $v->maxOrderable($product);
+
+            return [
+                'id'        => $v->id,
+                'label'     => $v->label(),
+                'options'   => (object) ($v->options ?? []),
+                'available' => $v->isAvailable($product),
+                'max'       => $max,
+                'stockText' => $max !== null && $max > 0 && $max <= 5
+                    ? 'تنها '.Digits::toPersian((string) $max).' عدد در انبار'
+                    : null,
+                'hidden'    => $price->hidden,
+                'callFor'   => ! $price->hidden && $price->amount <= 0,
+                'price'     => Money::format($price->amount, false),
+                'compare'   => $price->hasDiscount() ? Money::format($price->compareAt, false) : null,
+                'discount'  => $price->hasDiscount() ? Digits::toPersian((string) $price->discountPercent()) : null,
+                'tier'      => $price->tier->is_wholesale ? $price->tier->name : null,
+                'retail'    => $retail && $retail->amount > $price->amount ? Money::format($retail->amount, false) : null,
+                'tierRows'  => $wholesaler
+                    ? $resolver->tiersFor($v, $customer->effectiveTier())
+                        ->map(fn ($r) => ['min' => Digits::toPersian((string) $r->min_qty), 'text' => Money::format($r->amount)])->values()->all()
+                    : [],
+                'rawAmount' => $price->amount,
+            ];
+        })->values();
+
+        // انتخاب‌گر چندمحوره فقط وقتی معنا دارد که همه مدل‌ها دقیقاً همان کلیدها را داشته باشند
+        $keySets = $active->map(fn ($v) => array_keys($v->options ?? []))->unique(fn ($k) => json_encode($k));
+        $groups = [];
+
+        if ($keySets->count() === 1 && $keySets->first() !== []) {
+            foreach ($keySets->first() as $key) {
+                $groups[] = [
+                    'key'    => $key,
+                    'values' => $active->map(fn ($v) => $v->options[$key])->unique()->values()->all(),
+                ];
+            }
+        }
+
+        $default = $active->first(fn ($v) => $v->isAvailable($product)) ?? $active->first();
+
+        return ['variants' => $rows->all(), 'groups' => $groups, 'default' => $default, 'initial' => $default->id];
+    }
+
     public function show(Product $product, PriceResolver $resolver)
     {
         abort_unless($product->status === Product::PUBLISHED, 404);
@@ -149,12 +212,21 @@ class CatalogController extends Controller
         $product->increment('view_count');
 
         $customer = auth('customer')->user();
-        $resolved = $resolver->for($product, $customer);
+
+        $variantData = $this->variantData($product, $resolver, $customer);
+
+        // برای محصول چندمدلی، قیمت اولیه (و اسکیمای گوگل) از مدل پیش‌فرض می‌آید
+        $resolved = $variantData['default']
+            ? $resolver->for($variantData['default'], $customer)
+            : $resolver->for($product, $customer);
+
+        $product->setRelation('media', $product->media
+            ->sortBy(fn ($m) => [$m->is_primary ? 0 : 1, $m->sort, $m->id])->values());
 
         $related = Product::published()
             ->where('category_id', $product->category_id)
             ->whereKeyNot($product->id)
-            ->with(['brand', 'media', 'prices'])
+            ->with(['brand', 'media', 'prices', 'variants.prices'])
             ->limit(8)->get();
 
         return view('shop.product', [
@@ -170,6 +242,7 @@ class CatalogController extends Controller
             'tierRows' => $customer?->isWholesaler()
                 ? $resolver->tiersFor($product, $customer->effectiveTier())
                 : collect(),
+            'variantData' => $variantData,
             'related'  => $related,
             'reviews'  => $product->reviews()->approved()->latest()->limit(10)->get(),
             'questions' => $product->questions()->answered()->latest()->limit(10)->get(),

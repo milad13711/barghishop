@@ -98,7 +98,8 @@ class CheckoutService
                 $order->items()->create([
                     'product_id'         => $line->item->product_id,
                     'product_variant_id' => $line->item->product_variant_id,
-                    'name_snapshot'      => $line->item->product->name,
+                    'name_snapshot'      => $line->item->product->name
+                                            .($line->item->variant ? ' — '.$line->item->variant->label() : ''),
                     'sku_snapshot'       => $purchasable->sku,
                     'options_snapshot'   => $line->item->variant?->options,
                     'qty'                => $line->item->qty,
@@ -147,15 +148,22 @@ class CheckoutService
     {
         foreach ($lines as $line) {
             $product = $line->item->product;
+            $variant = $line->item->variant;
+
+            if ($variant && ! $variant->is_active) {
+                throw new RuntimeException('مدل «'.$product->name.' — '.$variant->label().'» دیگر عرضه نمی‌شود.');
+            }
 
             if (! $product->track_stock || $product->allow_backorder) {
                 continue;
             }
 
-            if ($product->stock < $line->item->qty) {
-                throw new RuntimeException(
-                    "موجودی «{$product->name}» کافی نیست (موجود: {$product->stock} عدد)."
-                );
+            // موجودی هر مدل مستقل است؛ محصول بدون مدل با موجودی خودش سنجیده می‌شود
+            $available = $variant ? $variant->stock : $product->stock;
+            $label = $variant ? $product->name.' — '.$variant->label() : $product->name;
+
+            if ($available < $line->item->qty) {
+                throw new RuntimeException("موجودی «{$label}» کافی نیست (موجود: {$available} عدد).");
             }
         }
     }

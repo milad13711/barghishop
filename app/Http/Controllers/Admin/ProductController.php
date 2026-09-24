@@ -8,9 +8,11 @@ use App\Models\Category;
 use App\Models\Price;
 use App\Models\PriceTier;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
@@ -86,10 +88,17 @@ class ProductController extends Controller
             'specs.*.value'     => ['nullable', 'string', 'max:1000'],
             'prices'            => ['nullable', 'array'],
             'images.*'          => ['nullable', 'image', 'max:4096'],
+            'variants'          => ['nullable', 'array', 'max:60'],
+            'variants.*.id'     => ['nullable', 'integer'],
+            'variants.*.name'   => ['nullable', 'string', 'max:150'],
+            'variants.*.sku'    => ['nullable', 'string', 'max:60'],
+            'variants.*.options' => ['nullable', 'string', 'max:500'],
+            'variants.*.stock'  => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'variants.*.weight_grams' => ['nullable', 'integer', 'min:0'],
         ]);
 
         // specs/prices ستون جدول نیستند و نباید mass-assign شوند
-        $product->fill(Arr::except($data, ['specs', 'prices', 'images']) + [
+        $product->fill(Arr::except($data, ['specs', 'prices', 'images', 'variants']) + [
             'is_featured'     => $request->boolean('is_featured'),
             'track_stock'     => $request->boolean('track_stock'),
             'allow_backorder' => $request->boolean('allow_backorder'),
@@ -104,6 +113,7 @@ class ProductController extends Controller
 
         $this->syncSpecs($product, $request->input('specs', []));
         $this->syncPrices($product, $request->input('prices', []));
+        $this->syncVariants($product, $request->input('variants', []));
         $this->storeImages($product, $request);
 
         return $product;
@@ -163,6 +173,116 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * مدل‌های محصول (رنگ، تعداد کانال و…). هر مدل موجودی و قیمت مستقل دارد.
+     * ستون «ویژگی‌ها» به شکل «رنگ: سفید | کانال: ۴» وارد می‌شود و همان
+     * کلیدها در صفحه محصول به انتخاب‌گر تبدیل می‌شوند.
+     * ردیف‌های حذف‌شده از فرم، از دیتابیس هم حذف می‌شوند.
+     */
+    protected function syncVariants(Product $product, array $rows): void
+    {
+        $keep = [];
+        $retailTier = PriceTier::retail();
+
+        foreach (array_values($rows) as $i => $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            $options = $this->parseOptions((string) ($row['options'] ?? ''));
+
+            if ($name === '' && $options === []) {
+                continue;
+            }
+
+            $name = $name !== '' ? $name : implode('، ', $options);
+
+            $variant = filled($row['id'] ?? null) ? $product->variants()->find($row['id']) : null;
+            $variant ??= new ProductVariant(['product_id' => $product->id]);
+
+            $sku = trim((string) ($row['sku'] ?? ''));
+            $sku = $sku !== '' ? $sku : ($variant->sku ?: $product->sku.'-'.($i + 1));
+
+            if (ProductVariant::where('sku', $sku)->when($variant->exists, fn ($q) => $q->whereKeyNot($variant->id))->exists()) {
+                throw ValidationException::withMessages(['variants' => "کد «{$sku}» برای مدل دیگری استفاده شده است."]);
+            }
+
+            $variant->fill([
+                'name'         => $name,
+                'sku'          => $sku,
+                'options'      => $options ?: null,
+                'stock'        => (int) ($row['stock'] ?? 0),
+                'weight_grams' => (int) ($row['weight_grams'] ?? 0),
+                'is_active'    => (bool) ($row['is_active'] ?? false),
+            ])->save();
+
+            $this->syncVariantPrices($variant, (array) ($row['prices'] ?? []), $retailTier, $name);
+
+            $keep[] = $variant->id;
+        }
+
+        $product->variants()->whereNotIn('id', $keep)->each(function (ProductVariant $gone) {
+            $gone->prices()->delete();
+            $gone->delete();
+        });
+
+        // موجودی کل محصول = مجموع مدل‌های فعال؛ فهرست‌ها و فیلتر «موجود» به آن تکیه دارند
+        if ($keep !== []) {
+            $product->update([
+                'stock'       => (int) $product->variants()->where('is_active', true)->sum('stock'),
+                'track_stock' => true,
+            ]);
+        }
+    }
+
+    protected function syncVariantPrices(ProductVariant $variant, array $prices, PriceTier $retail, string $name): void
+    {
+        $variant->prices()->delete();
+
+        foreach ($prices as $tierId => $row) {
+            $amount = (int) preg_replace('/\D/', '', \App\Support\Digits::toEnglish((string) ($row['amount'] ?? '')));
+
+            if ($amount <= 0 || ! PriceTier::whereKey($tierId)->exists()) {
+                continue;
+            }
+
+            $compare = (int) preg_replace('/\D/', '', \App\Support\Digits::toEnglish((string) ($row['compare_at'] ?? '')));
+
+            Price::create([
+                'priceable_type' => $variant->getMorphClass(),
+                'priceable_id'   => $variant->id,
+                'price_tier_id'  => $tierId,
+                'min_qty'        => 1,
+                'amount'         => Money::fromToman($amount),
+                'compare_at'     => $compare > 0 ? Money::fromToman($compare) : null,
+                'is_active'      => true,
+            ]);
+        }
+
+        // مدل بدون قیمت خرده نمایش قیمت ندارد؛ بهتر است همین‌جا جلوی ثبت ناقص را بگیریم
+        $hasOwnRetail = $variant->prices()->where('price_tier_id', $retail->id)->exists();
+        $hasProductRetail = $variant->product->prices()->where('price_tier_id', $retail->id)->exists();
+
+        if (! $hasOwnRetail && ! $hasProductRetail) {
+            throw ValidationException::withMessages([
+                'variants' => "برای مدل «{$name}» قیمت خرده‌فروشی وارد کنید (یا قیمت پایه محصول را ثبت کنید).",
+            ]);
+        }
+    }
+
+    /** «رنگ: سفید | کانال: ۴» ← ['رنگ' => 'سفید', 'کانال' => '۴'] */
+    protected function parseOptions(string $raw): array
+    {
+        $out = [];
+
+        foreach (explode('|', $raw) as $pair) {
+            [$k, $v] = array_pad(explode(':', $pair, 2), 2, null);
+
+            if (filled(trim((string) $k)) && filled(trim((string) $v))) {
+                $out[trim($k)] = trim($v);
+            }
+        }
+
+        return $out;
+    }
+
     protected function storeImages(Product $product, Request $request): void
     {
         foreach ((array) $request->file('images', []) as $file) {
@@ -188,7 +308,51 @@ class ProductController extends Controller
             'brands'     => Brand::orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(),
             'tiers'      => PriceTier::orderBy('sort')->get(),
+            'variantRows' => $this->variantRows($product),
         ];
+    }
+
+    /** ردیف‌های اولیه ویرایشگر مدل‌ها برای فرم (قیمت‌ها به تومان). */
+    protected function variantRows(Product $product): array
+    {
+        if (! $product->exists) {
+            return [];
+        }
+
+        $tiers = PriceTier::orderBy('sort')->get();
+
+        return $product->variants()->with('prices')->orderBy('id')->get()->map(function (ProductVariant $v) use ($tiers) {
+            $prices = [];
+
+            foreach ($tiers as $tier) {
+                $p = $v->prices->firstWhere('price_tier_id', $tier->id);
+                $prices[$tier->id] = [
+                    'amount'     => $p ? (string) Money::toToman($p->amount) : '',
+                    'compare_at' => $p?->compare_at ? (string) Money::toToman($p->compare_at) : '',
+                ];
+            }
+
+            return [
+                'id'           => $v->id,
+                'name'         => $v->name,
+                'sku'          => $v->sku,
+                'options'      => collect($v->options ?? [])->map(fn ($val, $k) => "$k: $val")->implode(' | '),
+                'stock'        => $v->stock,
+                'weight_grams' => $v->weight_grams ?: '',
+                'is_active'    => $v->is_active,
+                'prices'       => $prices,
+            ];
+        })->all();
+    }
+
+    public function makePrimaryMedia(Product $product, int $mediaId)
+    {
+        abort_unless($product->media()->whereKey($mediaId)->exists(), 404);
+
+        $product->media()->update(['is_primary' => false]);
+        $product->media()->whereKey($mediaId)->update(['is_primary' => true, 'sort' => -1]);
+
+        return back()->with('success', 'تصویر اصلی تغییر کرد.');
     }
 
     public function deleteMedia(Product $product, int $mediaId)

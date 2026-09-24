@@ -164,3 +164,8 @@
         @apply font-semibold text-electric-600 underline-offset-4 hover:underline;
     }
 }
+
+/* Alpine: عناصر x-cloak تا آماده‌شدن Alpine دیده نشوند */
+[x-cloak] {
+    display: none !important;
+}

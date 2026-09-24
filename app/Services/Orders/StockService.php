@@ -15,7 +15,10 @@ class StockService
 {
     public function commit(Order $order): void
     {
-        if ($this->alreadyCommitted($order)) {
+        // OrderStatusService لاگ «processing» جاری را پیش از فراخوانی این متد ثبت می‌کند؛
+        // پس فقط وقتی قبلاً کسر شده که بیش از یک لاگ processing وجود داشته باشد.
+        // (بررسی قبلی با alreadyCommitted() همیشه true بود و موجودی هرگز کم نمی‌شد.)
+        if ($order->statusLogs()->where('to_status', Order::PROCESSING)->count() > 1) {
             return;
         }
 

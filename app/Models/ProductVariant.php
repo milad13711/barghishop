@@ -29,6 +29,23 @@ class ProductVariant extends Model
         return $this->morphMany(Price::class, 'priceable');
     }
 
+    /** موجود بودن این مدل؛ موجودی هر مدل مستقل از مدل‌های دیگر است. */
+    public function isAvailable(?Product $product = null): bool
+    {
+        $product ??= $this->product;
+
+        return $this->is_active
+            && (! $product->track_stock || $this->stock > 0 || $product->allow_backorder);
+    }
+
+    /** بیشینه تعداد قابل سفارش؛ null یعنی محدودیتی نیست. */
+    public function maxOrderable(?Product $product = null): ?int
+    {
+        $product ??= $this->product;
+
+        return ($product->track_stock && ! $product->allow_backorder) ? max(0, $this->stock) : null;
+    }
+
     public function label(): string
     {
         if ($this->name) {

@@ -9,7 +9,7 @@
         <div class="flex h-16 items-center gap-4 lg:h-20 lg:gap-8">
 
             {{-- منوی موبایل --}}
-            <button type="button" class="lg:hidden -mr-2 p-2 text-navy-700" x-data @click="$dispatch('open-menu')" aria-label="منو">
+            <button type="button" class="lg:hidden -mr-2 p-2 text-navy-700" x-data @click="$dispatch('open-menu')" aria-label="باز کردن منو">
                 <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
                 </svg>

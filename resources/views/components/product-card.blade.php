@@ -3,8 +3,19 @@
 @php
     $resolver = app(\App\Services\Pricing\PriceResolver::class);
     $customer = auth('customer')->user();
-    $resolved  = $resolver->for($product, $customer);
-    $retail    = $customer?->isWholesaler() ? $resolver->retailFor($product) : null;
+    // محصول چندمدلی: «از» کمترین قیمت مدل‌های قابل‌سفارش نمایش داده می‌شود
+    $hasVariants = $product->hasVariants();
+    $pricingItem = $product;
+
+    if ($hasVariants) {
+        $pricingItem = $product->activeVariants()
+            ->filter(fn ($v) => $v->isAvailable($product))
+            ->sortBy(fn ($v) => $resolver->for($v, $customer)->amount ?: PHP_INT_MAX)
+            ->first() ?? $product->activeVariants()->first();
+    }
+
+    $resolved  = $resolver->for($pricingItem, $customer);
+    $retail    = $customer?->isWholesaler() ? $resolver->retailFor($pricingItem) : null;
     $image     = $product->primary_image;
 @endphp
 
@@ -59,8 +70,17 @@
         @endif
 
         <div class="mt-auto pt-4">
+            @if($hasVariants && ! $resolved->hidden)
+                <span class="text-[11px] font-semibold text-navy-400">از</span>
+            @endif
             <x-price :resolved="$resolved" :retail="$retail" size="md" />
 
+            @if($hasVariants)
+                <a href="{{ route('shop.product', $product) }}"
+                   class="btn-primary mt-3 w-full !py-2.5 !text-xs {{ $product->isAvailable() ? '' : 'pointer-events-none opacity-60' }}">
+                    {{ $product->isAvailable() ? 'انتخاب مدل' : __('shop.out_of_stock') }}
+                </a>
+            @else
             <form action="{{ route('cart.add') }}" method="post" class="mt-3">
                 @csrf
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
@@ -75,6 +95,7 @@
                     @endif
                 </button>
             </form>
+            @endif
         </div>
     </div>
 </article>
