@@ -17,6 +17,7 @@ use App\Services\Orders\OrderStatusService;
 use App\Services\Pricing\PriceResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProductVariantsTest extends TestCase
@@ -312,5 +313,102 @@ class ProductVariantsTest extends TestCase
         // لغو بعد از آماده‌سازی، موجودی را برمی‌گرداند
         app(OrderStatusService::class)->transition($order->fresh(), Order::CANCELLED, actorType: 'admin');
         $this->assertSame(10, $product->fresh()->stock);
+    }
+
+    public function test_admin_uploads_images_per_variant_and_keeps_them_separate_from_general_gallery(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $admin = User::firstOrFail();
+        $retail = PriceTier::retail();
+
+        $this->actingAs($admin, 'web')->post(route('admin.products.store'), [
+            'name' => 'دوربین رنگی', 'sku' => 'IMG-1', 'status' => 'published',
+            'images' => [\Illuminate\Http\UploadedFile::fake()->image('general.jpg')],
+            'variants' => [
+                ['name' => 'سفید', 'stock' => 3, 'is_active' => 1,
+                    'prices' => [$retail->id => ['amount' => '1000000']],
+                    'images' => [
+                        \Illuminate\Http\UploadedFile::fake()->image('white-front.jpg'),
+                        \Illuminate\Http\UploadedFile::fake()->image('white-side.jpg'),
+                    ]],
+                ['name' => 'مشکی', 'stock' => 3, 'is_active' => 1,
+                    'prices' => [$retail->id => ['amount' => '1000000']],
+                    'images' => [\Illuminate\Http\UploadedFile::fake()->image('black.jpg')]],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $product = Product::where('sku', 'IMG-1')->firstOrFail();
+        [$white, $black] = $product->variants;
+
+        $this->assertCount(1, $product->media);            // فقط تصویر عمومی
+        $this->assertCount(2, $white->media);
+        $this->assertCount(1, $black->media);
+        $this->assertCount(4, $product->allMedia);
+        $this->assertTrue($white->media->first()->is_primary);
+        $this->assertFalse($white->media->last()->is_primary);
+        Storage::disk('public')->assertExists($black->media->first()->path);
+    }
+
+    public function test_storefront_payload_gives_each_variant_its_own_images_and_falls_back_to_general(): void
+    {
+        $product = $this->productWithColors();
+        [$white, $black] = $product->variants;
+
+        $product->media()->create(['path' => 'products/general.jpg', 'sort' => 0, 'is_primary' => true]);
+        $white->media()->create(['product_id' => $product->id, 'path' => 'products/white.jpg', 'sort' => 0, 'is_primary' => true]);
+
+        $this->get(route('shop.product', $product))
+            ->assertOk()
+            ->assertViewHas('variantData', function (array $data) {
+                return $data['variants'][0]['images'][0]['src'] === '/storage/products/white.jpg'
+                    && $data['variants'][1]['images'] === [];      // مشکی: تصویر ندارد → گالری عمومی
+            })
+            ->assertViewHas('product', fn ($p) => $p->media->pluck('path')->all() === ['products/general.jpg']);
+    }
+
+    public function test_primary_image_is_scoped_to_its_own_group(): void
+    {
+        $product = $this->productWithColors();
+        $white = $product->variants->first();
+        $admin = User::firstOrFail();
+
+        $general = $product->media()->create(['path' => 'g.jpg', 'sort' => 0, 'is_primary' => true]);
+        $w1 = $white->media()->create(['product_id' => $product->id, 'path' => 'w1.jpg', 'sort' => 0, 'is_primary' => true]);
+        $w2 = $white->media()->create(['product_id' => $product->id, 'path' => 'w2.jpg', 'sort' => 1, 'is_primary' => false]);
+
+        $this->actingAs($admin, 'web')
+            ->post(route('admin.products.media.primary', [$product, $w2->id]))
+            ->assertRedirect();
+
+        $this->assertTrue($w2->fresh()->is_primary);
+        $this->assertFalse($w1->fresh()->is_primary);
+        $this->assertTrue($general->fresh()->is_primary);     // گروه عمومی دست‌نخورده
+    }
+
+    public function test_deleting_a_variant_removes_its_images(): void
+    {
+        $product = $this->productWithColors();
+        [$white, $black] = $product->variants;
+        $admin = User::firstOrFail();
+        $retail = PriceTier::retail();
+
+        $white->media()->create(['product_id' => $product->id, 'path' => 'w.jpg', 'sort' => 0]);
+
+        $this->actingAs($admin, 'web')->post(route('admin.products.update', $product), [
+            'name' => $product->name, 'sku' => $product->sku, 'status' => 'published',
+            'variants' => [['id' => $black->id, 'name' => 'مشکی', 'stock' => 1, 'is_active' => 1,
+                'prices' => [$retail->id => ['amount' => '12000']]]],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(0, \App\Models\ProductMedia::where('path', 'w.jpg')->count());
+    }
+
+    public function test_card_image_falls_back_to_a_variant_image_when_no_general_image_exists(): void
+    {
+        $product = $this->productWithColors();
+        $product->variants->first()->media()->create(['product_id' => $product->id, 'path' => 'only-variant.jpg', 'sort' => 0]);
+
+        $this->assertSame('only-variant.jpg', $product->fresh()->primary_image);
     }
 }

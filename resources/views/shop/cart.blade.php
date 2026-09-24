@@ -26,8 +26,9 @@
                     <div class="flex gap-4 p-5">
                         <a href="{{ route('shop.product', $product) }}"
                            class="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-50">
-                            @if($product->primary_image)
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($product->primary_image) }}"
+                            @php $lineImage = $line->item->variant?->media->first()?->url() ?? ($product->primary_image ? '/storage/'.$product->primary_image : null); @endphp
+                            @if($lineImage)
+                                <img src="{{ $lineImage }}"
                                      alt="{{ $product->name }}" class="size-full object-contain p-2">
                             @else
                                 <span class="text-navy-200 text-xs">بدون تصویر</span>

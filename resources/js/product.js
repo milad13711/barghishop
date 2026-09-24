@@ -24,6 +24,16 @@ export const productGallery = (images = []) => ({
         return this.images[this.index];
     },
 
+    // با تغییر مدل، گالری به تصاویر همان مدل (یا عمومی محصول) عوض می‌شود
+    setImages(list) {
+        const same = JSON.stringify(list) === JSON.stringify(this.images);
+        if (same) return;
+        this.images = list;
+        this.index = 0;
+        this.zoom = false;
+        this.lbZoom = false;
+    },
+
     go(i) {
         if (!this.images.length) return;
         this.index = (i + this.images.length) % this.images.length;
@@ -97,6 +107,7 @@ export const productBuy = (cfg = {}) => ({
     variants: cfg.variants || [],
     groups: cfg.groups || [],
     variantId: cfg.initial ?? null,
+    general: cfg.general || [],
     selected: {},
     qty: 1,
 
@@ -125,6 +136,8 @@ export const productBuy = (cfg = {}) => ({
         this.variantId = id;
         this.selected = { ...(this.current?.options || {}) };
         this.clampQty();
+        const own = this.current?.images || [];
+        window.dispatchEvent(new CustomEvent('variant-images', { detail: own.length ? own : this.general }));
     },
 
     valueAvailable(key, val) {

@@ -19,6 +19,11 @@ class ProductMedia extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
     public function url(): string
     {
         // نسبی به ریشه سایت؛ به APP_URL و تفاوت www/بدون‌www وابسته نیست

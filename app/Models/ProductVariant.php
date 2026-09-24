@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
@@ -22,6 +23,12 @@ class ProductVariant extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /** تصاویر مخصوص این مدل؛ اگر خالی باشد، گالری عمومی محصول نمایش داده می‌شود. */
+    public function media(): HasMany
+    {
+        return $this->hasMany(ProductMedia::class, 'product_variant_id')->orderBy('sort')->orderBy('id');
     }
 
     public function prices(): MorphMany

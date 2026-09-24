@@ -42,7 +42,7 @@ class CartService
             ]);
         }
 
-        return $this->cart = $cart?->load(['items.product.media', 'items.product.prices', 'items.variant.prices', 'coupon']);
+        return $this->cart = $cart?->load(['items.product.media', 'items.product.prices', 'items.variant.prices', 'items.variant.media', 'coupon']);
     }
 
     public function add(Product $product, int $qty = 1, ?ProductVariant $variant = null): CartItem

@@ -51,7 +51,14 @@ class Product extends Model
         return $this->hasMany(ProductSpec::class)->orderBy('sort');
     }
 
+    /** تصاویر عمومی محصول (مخصوص هیچ مدلی نیستند). */
     public function media(): HasMany
+    {
+        return $this->hasMany(ProductMedia::class)->whereNull('product_variant_id')->orderBy('sort');
+    }
+
+    /** همه تصاویر، شامل تصاویر مدل‌ها — برای عملیات پنل. */
+    public function allMedia(): HasMany
     {
         return $this->hasMany(ProductMedia::class)->orderBy('sort');
     }
@@ -86,8 +93,10 @@ class Product extends Model
 
     public function getPrimaryImageAttribute(): ?string
     {
-        return $this->media->firstWhere('is_primary', true)?->path
-            ?? $this->media->first()?->path;
+        $general = $this->media->firstWhere('is_primary', true)?->path ?? $this->media->first()?->path;
+
+        // محصولی که فقط تصویر مدل‌ها را دارد، با اولین تصویر یک مدل معرفی می‌شود
+        return $general ?? ProductMedia::where('product_id', $this->id)->orderBy('sort')->orderBy('id')->value('path');
     }
 
     /** مدل‌های فعال (رنگ، تعداد کانال و…). محصول بدون مدل، مثل قبل با موجودی خودش کار می‌کند. */

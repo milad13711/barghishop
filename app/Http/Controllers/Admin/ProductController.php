@@ -95,6 +95,8 @@ class ProductController extends Controller
             'variants.*.options' => ['nullable', 'string', 'max:500'],
             'variants.*.stock'  => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'variants.*.weight_grams' => ['nullable', 'integer', 'min:0'],
+            'variants.*.images'   => ['nullable', 'array', 'max:12'],
+            'variants.*.images.*' => ['nullable', 'image', 'max:4096'],
         ]);
 
         // specs/prices ستون جدول نیستند و نباید mass-assign شوند
@@ -113,7 +115,7 @@ class ProductController extends Controller
 
         $this->syncSpecs($product, $request->input('specs', []));
         $this->syncPrices($product, $request->input('prices', []));
-        $this->syncVariants($product, $request->input('variants', []));
+        $this->syncVariants($product, $request->input('variants', []), $request);
         $this->storeImages($product, $request);
 
         return $product;
@@ -179,12 +181,16 @@ class ProductController extends Controller
      * کلیدها در صفحه محصول به انتخاب‌گر تبدیل می‌شوند.
      * ردیف‌های حذف‌شده از فرم، از دیتابیس هم حذف می‌شوند.
      */
-    protected function syncVariants(Product $product, array $rows): void
+    protected function syncVariants(Product $product, array $rows, Request $request): void
     {
         $keep = [];
         $retailTier = PriceTier::retail();
 
-        foreach (array_values($rows) as $i => $row) {
+        $i = -1;
+
+        // کلید اصلی ردیف را نگه می‌داریم؛ فایل‌های آپلودی با همان کلید در request هستند
+        foreach ($rows as $rowKey => $row) {
+            $i++;
             $name = trim((string) ($row['name'] ?? ''));
             $options = $this->parseOptions((string) ($row['options'] ?? ''));
 
@@ -214,12 +220,14 @@ class ProductController extends Controller
             ])->save();
 
             $this->syncVariantPrices($variant, (array) ($row['prices'] ?? []), $retailTier, $name);
+            $this->storeVariantImages($variant, (array) $request->file("variants.$rowKey.images", []));
 
             $keep[] = $variant->id;
         }
 
         $product->variants()->whereNotIn('id', $keep)->each(function (ProductVariant $gone) {
             $gone->prices()->delete();
+            $gone->media()->delete();
             $gone->delete();
         });
 
@@ -228,6 +236,26 @@ class ProductController extends Controller
             $product->update([
                 'stock'       => (int) $product->variants()->where('is_active', true)->sum('stock'),
                 'track_stock' => true,
+            ]);
+        }
+    }
+
+    /** تصاویر مخصوص یک مدل؛ اولین تصویر مدل، تصویر اصلی آن مدل می‌شود. */
+    protected function storeVariantImages(ProductVariant $variant, array $files): void
+    {
+        foreach ($files as $file) {
+            if (! $file) {
+                continue;
+            }
+
+            $count = $variant->media()->count();
+
+            $variant->media()->create([
+                'product_id' => $variant->product_id,
+                'path'       => $file->store("products/{$variant->product_id}/variants/{$variant->id}", 'public'),
+                'alt'        => $variant->product->name.' — '.$variant->label(),
+                'is_primary' => $count === 0,
+                'sort'       => $count,
             ]);
         }
     }
@@ -321,7 +349,7 @@ class ProductController extends Controller
 
         $tiers = PriceTier::orderBy('sort')->get();
 
-        return $product->variants()->with('prices')->orderBy('id')->get()->map(function (ProductVariant $v) use ($tiers) {
+        return $product->variants()->with(['prices', 'media'])->orderBy('id')->get()->map(function (ProductVariant $v) use ($tiers) {
             $prices = [];
 
             foreach ($tiers as $tier) {
@@ -341,23 +369,25 @@ class ProductController extends Controller
                 'weight_grams' => $v->weight_grams ?: '',
                 'is_active'    => $v->is_active,
                 'prices'       => $prices,
+                'media'        => $v->media->map(fn ($m) => ['id' => $m->id, 'url' => $m->url(), 'is_primary' => $m->is_primary])->all(),
             ];
         })->all();
     }
 
     public function makePrimaryMedia(Product $product, int $mediaId)
     {
-        abort_unless($product->media()->whereKey($mediaId)->exists(), 404);
+        $media = $product->allMedia()->whereKey($mediaId)->firstOrFail();
 
-        $product->media()->update(['is_primary' => false]);
-        $product->media()->whereKey($mediaId)->update(['is_primary' => true, 'sort' => -1]);
+        // «تصویر اصلی» فقط در گروه خودش معنا دارد: عمومی محصول یا هر مدل جدا
+        $product->allMedia()->where('product_variant_id', $media->product_variant_id)->update(['is_primary' => false]);
+        $media->update(['is_primary' => true, 'sort' => -1]);
 
         return back()->with('success', 'تصویر اصلی تغییر کرد.');
     }
 
     public function deleteMedia(Product $product, int $mediaId)
     {
-        $product->media()->whereKey($mediaId)->delete();
+        $product->allMedia()->whereKey($mediaId)->delete();
 
         return back()->with('success', 'تصویر حذف شد.');
     }

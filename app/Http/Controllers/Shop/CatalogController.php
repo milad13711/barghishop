@@ -182,6 +182,8 @@ class CatalogController extends Controller
                     ? $resolver->tiersFor($v, $customer->effectiveTier())
                         ->map(fn ($r) => ['min' => Digits::toPersian((string) $r->min_qty), 'text' => Money::format($r->amount)])->values()->all()
                     : [],
+                // تصاویر مخصوص این مدل؛ خالی یعنی گالری عمومی محصول
+                'images'    => $v->media->map(fn ($m) => ['src' => $m->url(), 'alt' => $m->alt ?: $product->name.' — '.$v->label()])->values()->all(),
                 'rawAmount' => $price->amount,
             ];
         })->values();
@@ -208,7 +210,7 @@ class CatalogController extends Controller
     {
         abort_unless($product->status === Product::PUBLISHED, 404);
 
-        $product->load(['brand', 'category.parent', 'media', 'specs', 'variants.prices', 'prices']);
+        $product->load(['brand', 'category.parent', 'media', 'specs', 'variants.prices', 'variants.media', 'prices']);
         $product->increment('view_count');
 
         $customer = auth('customer')->user();

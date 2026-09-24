@@ -14,21 +14,26 @@
     ], fn ($v, $k) => filled($k), ARRAY_FILTER_USE_BOTH)" />
 
     @php
-        $galleryImages = $product->media->map(fn ($m) => ['src' => $m->url(), 'alt' => $m->alt ?: $product->name])->values();
-        $buyConfig = ['variants' => $variantData['variants'], 'groups' => $variantData['groups'], 'initial' => $variantData['initial']];
+        $generalImages = $product->media->map(fn ($m) => ['src' => $m->url(), 'alt' => $m->alt ?: $product->name])->values();
+        $defaultVariantImages = collect($variantData['variants'])->firstWhere('id', $variantData['initial'])['images'] ?? [];
+        // مدل پیش‌فرض تصویر مخصوص دارد؟ همان؛ وگرنه گالری عمومی
+        $galleryImages = count($defaultVariantImages) ? collect($defaultVariantImages) : $generalImages;
+        $hasAnyImages = $generalImages->isNotEmpty() || collect($variantData['variants'])->contains(fn ($v) => count($v['images']));
+        $buyConfig = ['variants' => $variantData['variants'], 'groups' => $variantData['groups'], 'initial' => $variantData['initial'], 'general' => $generalImages];
     @endphp
 
     <div class="grid gap-8 lg:grid-cols-[1fr_380px]" x-data="productBuy({{ \Illuminate\Support\Js::from($buyConfig) }})">
 
         {{-- تصویر و اطلاعات --}}
         <div class="grid gap-8 md:grid-cols-2">
-            <div x-data="productGallery({{ \Illuminate\Support\Js::from($galleryImages) }})">
-                @if($galleryImages->isNotEmpty())
-                    <div class="card relative aspect-square cursor-zoom-in select-none overflow-hidden bg-white"
+            <div x-data="productGallery({{ \Illuminate\Support\Js::from($galleryImages) }})"
+                 x-on:variant-images.window="setImages($event.detail)">
+                @if($hasAnyImages)
+                    <div class="card relative aspect-square cursor-zoom-in select-none overflow-hidden bg-white" x-show="images.length"
                          tabindex="0" role="button" aria-label="نمایش بزرگ‌تر تصویر"
                          @mousemove="hoverMove($event)" @mouseleave="hoverLeave()" @click="open()" @keydown.enter="open()"
                          @touchstart.passive="touchStart($event)" @touchend="touchEnd($event)">
-                        <img src="{{ $galleryImages[0]['src'] }}" :src="current?.src" :alt="current?.alt ?? ''"
+                        <img src="{{ $galleryImages[0]['src'] ?? '' }}" :src="current?.src" :alt="current?.alt ?? ''"
                              width="600" height="600" draggable="false"
                              class="absolute inset-0 size-full object-contain p-6 transition-transform duration-150 ease-out will-change-transform"
                              :style="zoom ? `transform: scale(2.4); transform-origin: ${ox}% ${oy}%` : ''">
@@ -116,6 +121,9 @@
                             </template>
                         </div>
                     </template>
+                    <div x-show="!images.length" x-cloak class="card grid aspect-square place-items-center bg-white">
+                        <svg class="size-28 text-navy-100" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M18 8.25h.008v.008H18V8.25Zm2.25 10.5H3.75A2.25 2.25 0 0 1 1.5 16.5V7.5a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 7.5v9a2.25 2.25 0 0 1-2.25 2.25Z"/></svg>
+                    </div>
                 @else
                     <div class="card grid aspect-square place-items-center bg-white">
                         <svg class="size-28 text-navy-100" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">

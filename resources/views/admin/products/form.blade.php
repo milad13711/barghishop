@@ -146,7 +146,7 @@
                     add() {
                         const prices = {};
                         this.tiers.forEach(t => prices[t.id] = { amount: '', compare_at: '' });
-                        this.rows.push({ id: '', name: '', sku: '', options: '', stock: 0, weight_grams: '', is_active: true, prices });
+                        this.rows.push({ id: '', name: '', sku: '', options: '', stock: 0, weight_grams: '', is_active: true, prices, media: [] });
                     },
                  }">
             <div class="flex items-center justify-between">
@@ -189,6 +189,28 @@
                                 <input type="number" min="0" :name="`variants[${i}][weight_grams]`" x-model="row.weight_grams" class="input !py-2 !text-xs" placeholder="پیش‌فرض محصول">
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <div class="mb-1.5 text-[11px] font-semibold text-navy-600">تصاویر مخصوص این مدل</div>
+                        <p class="mb-2 text-[11px] leading-5 text-navy-400">با انتخاب این مدل در سایت، گالری به همین تصاویر تغییر می‌کند. اگر تصویری نگذارید، تصاویر عمومی محصول نمایش داده می‌شود.</p>
+                        <template x-if="row.media && row.media.length">
+                            <div class="mb-2 grid grid-cols-4 gap-2">
+                                <template x-for="m in row.media" :key="m.id">
+                                    <div class="group relative aspect-square overflow-hidden rounded-lg bg-white ring-1 ring-navy-100">
+                                        <img :src="m.url" alt="" class="size-full object-contain p-1">
+                                        <span x-show="m.is_primary" class="absolute right-1 top-1 rounded bg-gold-500 px-1 text-[9px] text-navy-950">اصلی</span>
+                                        <div class="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-navy-900/70 p-1 text-[10px] opacity-0 transition group-hover:opacity-100">
+                                            <button type="submit" x-show="!m.is_primary" :form="'media-primary-' + m.id" class="text-white">اصلی کن</button>
+                                            <button type="submit" :form="'media-delete-' + m.id" class="mr-auto text-rose-300"
+                                                    onclick="return confirm('این تصویر حذف شود؟')">حذف</button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <input type="file" multiple accept="image/*" :name="`variants[${i}][images][]`"
+                               class="w-full text-[11px] text-navy-600 file:ml-3 file:rounded-lg file:border-0 file:bg-navy-900 file:px-3 file:py-1.5 file:text-[11px] file:text-white">
                     </div>
 
                     <div>
@@ -314,7 +336,7 @@
 </form>
 
 @if($product->exists)
-    @foreach($product->media as $media)
+    @foreach($product->allMedia as $media)
         <form id="media-primary-{{ $media->id }}" action="{{ route('admin.products.media.primary', [$product, $media->id]) }}" method="post" class="hidden">@csrf</form>
         <form id="media-delete-{{ $media->id }}" action="{{ route('admin.products.media.destroy', [$product, $media->id]) }}" method="post" class="hidden">@csrf @method('DELETE')</form>
     @endforeach
